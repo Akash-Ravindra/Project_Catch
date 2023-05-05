@@ -11,8 +11,8 @@ geometry_msgs/Point[] trajectory
 bool isValid
 string objectName
 float32 deltaAltitude
-geometry_msgs/Point targetPosition
+geometry_msgs/Point currentPosition
 float32 interceptDelta
 float32 interceptTime
-geometry_msgs/Point[] intercept
+geometry_msgs/Point[] predictedTrajectory
 
