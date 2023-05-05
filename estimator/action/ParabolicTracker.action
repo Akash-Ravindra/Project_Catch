@@ -1,15 +1,17 @@
 # Define the goal
-bool start_tracker
-string name_object
+bool startTracker
+string objectName
+string viconTopic
 ---
 # Define the result
+bool isSuccess
 geometry_msgs/Point[] trajectory
 ---
 # Define feedback
-bool is_valid
-float32 delta_altitude
-geometry_msgs/Point target_pos
-float32 intercept_delta
-float32 intercept_time
+bool isValid
+float32 deltaAltitude
+geometry_msgs/Point targetPosition
+float32 interceptDelta
+float32 interceptTime
 geometry_msgs/Point[] intercept
 
