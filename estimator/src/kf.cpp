@@ -37,8 +37,7 @@ void KF::step(const double &dt, const Matrix<double, 3, 1> &z) {
     // Initialize the history and use as seed for states
     this->history_.push_back(z);
     if (this->history_.size() == 2) {
-      this->x_.row(0) = this->history_[1];
-      this->x_.row(3) = (this->history_[1] - this->history_[0]) / dt;
+      this->x_<< this->history_[1] , (this->history_[1] - this->history_[0]) / dt;
     }
     return;
   }
