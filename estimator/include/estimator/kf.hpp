@@ -5,20 +5,20 @@
 // Define the namespace
 namespace linearKF {
 using namespace Eigen;
-Matrix<double, 6, 6> defaultP =
-    (MatrixXd(6, 6) << 0.01, 0, 0, 0.001, 0, 0, 0, 0.01, 0, 0, 0.001, 0, 0, 0,
-     0.01, 0, 0, 0.001, 0.001, 0, 0, 500, 0, 0, 0, 0.001, 0, 0, 500, 0, 0, 0,
-     0.001, 0, 0, 500)
-        .finished();
-
-Matrix3d defaultR = MatrixXd::Identity(3, 3) * 0.005;
-
-Matrix<double, 3, 6> defaultH =
-    (MatrixXd(3, 6) << MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3))
-        .finished();
 
 class KF {
 private:
+  Matrix<double, 6, 6> defaultP =
+      (MatrixXd(6, 6) << 0.01, 0, 0, 0.001, 0, 0, 0, 0.01, 0, 0, 0.001, 0, 0, 0,
+       0.01, 0, 0, 0.001, 0.001, 0, 0, 500, 0, 0, 0, 0.001, 0, 0, 500, 0, 0, 0,
+       0.001, 0, 0, 500)
+          .finished();
+
+  Matrix3d defaultR = MatrixXd::Identity(3, 3) * 0.005;
+
+  Matrix<double, 3, 6> defaultH =
+      (MatrixXd(3, 6) << MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3))
+          .finished();
   // State vector
   Matrix<double, 6, 1> x_;
   // Predicted state vector
@@ -31,22 +31,22 @@ private:
   Matrix<double, 6, 6> Q_;
   // Measurement noise covariance matrix
   Matrix<double, 3, 3> R_;
-    //Kalman gain
-    Matrix<double, 6, 3> K_;
+  // Kalman gain
+  Matrix<double, 6, 3> K_;
   // Measurement matrix
   Matrix<double, 3, 6> H_;
   // Control input vector
   Matrix<double, 3, 1> u_;
   // State transition matrix
-Matrix<double, 6, 6> A_;
-// Control input matrix
-Matrix<double, 6, 3> B_;
+  Matrix<double, 6, 6> A_;
+  // Control input matrix
+  Matrix<double, 6, 3> B_;
+  // Accumulated mesurement
+  std::vector<Vector3d> history_;
+  // Average timestep
+  std::vector<double> dt_;
 
-
-  //Average timestep
-    std::vector<double> dt_;
-
-  Matrix<double,6,6> get_Q_(double dt) {
+  Matrix<double, 6, 6> get_Q_(double dt) {
     Matrix<double, 6, 6> Q;
     RowVector4d diff{0.25 * pow(dt, 4.0), 0, 0, 0.5 * pow(dt, 3.0)};
     Q.row(0) << diff, 0, 0;
@@ -70,11 +70,11 @@ Matrix<double, 6, 3> B_;
   }
 
   /// @brief Update the average of the timestep
-  /// @param dt 
+  /// @param dt
   void updatedt_(const double &dt);
 
   /// @brief Update the state transition matrix and control input matrix
-  /// @param dt 
+  /// @param dt
   void updateParams_(const double &dt);
   void updateParams_();
 
@@ -107,6 +107,14 @@ public:
   /// @brief Update the state vector and covariance matrix given the measurement
   void predict(const double &dt);
   void predict();
+
+  /// @brief Get the state vector and covariance matrix
+  /// @param x
+  /// @param P
+  void getStates(Matrix<double, 6, 1> &x, Matrix<double, 6, 6> &P) const {
+    x = this->x_;
+    P = this->P_;
+  };
 };
 
 } // namespace linearKF
