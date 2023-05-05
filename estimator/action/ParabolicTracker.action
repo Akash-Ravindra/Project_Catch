@@ -9,6 +9,7 @@ geometry_msgs/Point[] trajectory
 ---
 # Define feedback
 bool isValid
+string objectName
 float32 deltaAltitude
 geometry_msgs/Point targetPosition
 float32 interceptDelta
