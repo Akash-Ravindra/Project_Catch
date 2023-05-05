@@ -1,7 +1,18 @@
 #include "../include/estimator/kf.hpp"
-
 using namespace Eigen;
 using namespace linearKF;
+
+const Matrix<double, 6, 6> defaultP =
+    (MatrixXd(6, 6) << 0.01, 0, 0, 0.001, 0, 0, 0, 0.01, 0, 0, 0.001, 0, 0, 0,
+     0.01, 0, 0, 0.001, 0.001, 0, 0, 500, 0, 0, 0, 0.001, 0, 0, 500, 0, 0, 0,
+     0.001, 0, 0, 500)
+        .finished();
+
+const Matrix3d defaultR = MatrixXd::Identity(3, 3) * 0.005;
+
+const Matrix<double, 3, 6> defaultH =
+    (MatrixXd(3, 6) << MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3))
+        .finished();
 
 KF::KF(const MatrixXd &P, const MatrixXd &R, const MatrixXd &H,
        const double &gravity)
@@ -37,7 +48,8 @@ void KF::step(const double &dt, const Matrix<double, 3, 1> &z) {
     // Initialize the history and use as seed for states
     this->history_.push_back(z);
     if (this->history_.size() == 2) {
-      this->x_<< this->history_[1] , (this->history_[1] - this->history_[0]) / dt;
+      this->x_ << this->history_[1],
+          (this->history_[1] - this->history_[0]) / dt;
     }
     return;
   }
@@ -49,10 +61,10 @@ void KF::step(const double &dt, const Matrix<double, 3, 1> &z) {
   this->update(z);
 };
 
-void KF::step() {
-  this->updateParams_(0.0001);
+void KF::step(const double &dt) {
+  this->updateParams_(dt);
   // Predict
-  this->predict(0.0001);
+  this->predict(dt);
   // Update
   this->x_ = this->x_hat_;
   this->P_ = this->P_hat_;

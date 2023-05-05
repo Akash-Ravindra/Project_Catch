@@ -8,17 +8,6 @@ using namespace Eigen;
 
 class KF {
 private:
-  Matrix<double, 6, 6> defaultP =
-      (MatrixXd(6, 6) << 0.01, 0, 0, 0.001, 0, 0, 0, 0.01, 0, 0, 0.001, 0, 0, 0,
-       0.01, 0, 0, 0.001, 0.001, 0, 0, 500, 0, 0, 0, 0.001, 0, 0, 500, 0, 0, 0,
-       0.001, 0, 0, 500)
-          .finished();
-
-  Matrix3d defaultR = MatrixXd::Identity(3, 3) * 0.005;
-
-  Matrix<double, 3, 6> defaultH =
-      (MatrixXd(3, 6) << MatrixXd::Identity(3, 3), MatrixXd::Zero(3, 3))
-          .finished();
   // State vector
   Matrix<double, 6, 1> x_;
   // Predicted state vector
@@ -98,7 +87,7 @@ public:
   /// states and update the covariance matrix
   /// @param z
   void step(const double &dt, const Matrix<double, 3, 1> &z);
-  void step();
+  void step(const double &dt);
 
   /// @brief Update the state vector and covariance matrix given the measurement
   /// @param dt
