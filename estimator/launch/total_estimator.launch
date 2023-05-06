@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="estimator" type="estimator_node" name="estimator_node" output="screen"/>
+</launch>
