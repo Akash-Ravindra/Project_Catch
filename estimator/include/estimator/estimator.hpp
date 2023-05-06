@@ -25,15 +25,16 @@ protected:
   /// @brief Subscriber for the vicon msgs
   ros::Subscriber vicon_sub_;
   /// @brief Timer meant to handle timeouts
-  ros::Timer action_timeout_;
-  ros::Timer flight_timeout_;
-  bool flight_timeout_bool = false;
+  ros::Timer action_timer_;
+  ros::Timer flight_timer_;
 
   linearKF::KF filter_;
   /// @brief Store the previous msgs
   std::vector<std::pair<geometry_msgs::Point, double>> msg_hist_;
   /// @brief Store the filtered history
   std::vector<geometry_msgs::Point> filtered_hist_;
+  /// @brief Total flight time elapsed
+  double flight_time_;
 
   /// @brief Populate the feedback_
   /// @param isValid
@@ -46,19 +47,19 @@ protected:
                         const double &deltaAltitude,
                         const double &interceptDelta,
                         const double &interceptTime,
-                        const geometry_msgs::PointConstPtr &currentPosition,
+                        const geometry_msgs::Point &currentPosition,
                         const std::vector<geometry_msgs::Point> &predictedTrajectory) {
     this->feedback_.isValid = isValid;
     this->feedback_.objectName = name;
     this->feedback_.deltaAltitude = deltaAltitude;
     this->feedback_.interceptDelta = interceptDelta;
     this->feedback_.interceptTime = interceptTime;
-    this->feedback_.currentPosition = *currentPosition;
+    this->feedback_.currentPosition = currentPosition;
     this->feedback_.predictedTrajectory = predictedTrajectory;
   }
   void clearFeedback() {
     this->populateFeedback(false, "", 0.0, 0.0, 0.0,
-                           geometry_msgs::PointConstPtr(),
+                           geometry_msgs::Point(),
                            std::vector<geometry_msgs::Point>());
   }
   void simulateFlight_(std::vector<geometry_msgs::Point> *prediction);
@@ -66,6 +67,12 @@ protected:
     p->x = e(0);
     p->y = e(1);
     p->z = e(2);
+  }
+  void resetAccumulators_(){
+    this->msg_hist_.clear();
+    this->filtered_hist_.clear();
+    this->flight_time_ = 0.0;
+    this->filter_ = linearKF::KF();
   }
 public:
   /// @brief
