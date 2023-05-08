@@ -1,0 +1,9 @@
+#goal
+uint32 cmd_type
+geometry_msgs/Pose goal
+---
+#result
+bool success
+---
+#feedback
+geometry_msgs/Pose drone_pose
