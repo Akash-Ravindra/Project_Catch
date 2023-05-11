@@ -1,9 +1,10 @@
 #goal
-uint32 cmd_type
-geometry_msgs/Pose goal
+uint32 cmdType
+string setMode
+geometry_msgs/Pose goalPose
 ---
 #result
 bool success
 ---
 #feedback
-geometry_msgs/Pose drone_pose
+geometry_msgs/Pose dronePose
