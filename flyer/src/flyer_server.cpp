@@ -53,15 +53,15 @@ void Flyer::actionGoalCB()
       ROS_INFO_NAMED(this->action_name_, "Land command received");
       this->land();
       break;
+    case FlyerCommand::HOME:
+      ROS_INFO_NAMED(this->action_name_, "Home command received");
+      this->move(Waypoints::HOME, true);
+      break;
     case FlyerCommand::MOVE:
       ROS_INFO_NAMED(this->action_name_, "Move command received");
       // Convert geometry pose to mavros position target
       this->poseToPositionTarget(goal->goalPose, hold_target_);
       this->move(hold_target_, true);
-      break;
-    case FlyerCommand::HOME:
-      ROS_INFO_NAMED(this->action_name_, "Home command received");
-      this->move(Waypoints::HOME, true);
       break;
     case FlyerCommand::SET_MODE:
       ROS_INFO_NAMED(this->action_name_, "Set mode command received");
@@ -214,6 +214,11 @@ void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold){
     {
       ROS_INFO_NAMED(this->action_name_, "Setting mode to OFFBOARD");
       this->setMode("OFFBOARD");
+      if(!this->result_.success)
+      {
+        ROS_ERROR_NAMED(this->action_name_, "Failed to set mode to OFFBOARD");
+        return;
+      }
       ros::Duration(0.5).sleep();
     }
     // Arm if not
@@ -221,6 +226,11 @@ void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold){
     {
       ROS_INFO_NAMED(this->action_name_, "Arming");
       this->arm();
+      if(!this->result_.success)
+      {
+        ROS_ERROR_NAMED(this->action_name_, "Failed to set mode to OFFBOARD");
+        return;
+      }
       ros::Duration(2).sleep();
     }
     // Stop the hold timer so that new position target can be sent
@@ -236,7 +246,7 @@ void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold){
       if(this->current_pose_.is_valid && this->distance(this->current_pose_.pos, pos_target.position) < Waypoints::tolerance) {this->result_.success=true;break;}
       if(ros::Time::now().toSec() - time > Waypoints::timeout) {this->result_.success=false;break;}
     }
-    if(!this->is_goal_active_){
+    if(!this->is_goal_active_ || !this->result_.success){
       ROS_INFO_NAMED(this->action_name_, "Goal cancelled or not reached");
       ros::spinOnce();
       pos_target.position.x = this->current_pose_.pos.x();

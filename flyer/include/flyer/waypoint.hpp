@@ -21,10 +21,10 @@ class Waypoints{
 };
 enum class FlyerCommand
 {
-    TAKEOFF,
+    TAKEOFF=1,
     LAND,
-    MOVE,
     HOME,
+    MOVE,
     SET_MODE,
     ARM,
     DISARM
