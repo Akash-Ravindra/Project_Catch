@@ -121,11 +121,11 @@ public:
     void stateCB(const mavros_msgs::State::ConstPtr &msg);
     /// @brief Change the mode of the drone to offboard or manual
     /// @param mode 
-    void setMode(const std::string &mode);
+    const bool setMode(const std::string &mode);
     /// @brief Arm the drone using the service client
-    void arm();
+    const bool arm(bool arm = true);
     /// @brief Disarm the drone using the service client
-    void disarm();
+    const bool disarm();
     /// @brief Take off the drone using the service client
     /// @param height 
     void takeoff();

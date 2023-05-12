@@ -93,7 +93,7 @@ void Flyer::actionGoalCB()
 
 void Flyer::holdCB(const ros::TimerEvent& event)
 {
-  if(ros::ok())
+  if(ros::ok() && this->current_state_.mode == "OFFBOARD" && this->current_state_.armed)
   {
     ROS_INFO_NAMED(this->action_name_, "Hold timer triggered");
     this->setpoint_pub_.publish(this->hold_target_);
@@ -130,53 +130,67 @@ void Flyer::stateCB(const mavros_msgs::State::ConstPtr& msg)
   this->current_state_ = *msg;
 }
 
-void Flyer::setMode(const std::string& mode)
+const bool Flyer::setMode(const std::string& mode)
 {
   ROS_INFO_NAMED(this->action_name_, "Set mode called");
   mavros_msgs::SetMode set_mode;
   set_mode.request.custom_mode = mode;
-  if (set_mode_client_.call(set_mode) && set_mode.response.mode_sent)
+  // Call the server
+  bool success = set_mode_client_.call(set_mode);
+  ros::Duration(0.1).sleep();
+
+  if (success && set_mode.response.mode_sent)
   {
     ROS_INFO_NAMED(this->action_name_, "Mode set to %s", mode.c_str());
     this->result_.success = true;
+    return true;
   }
   else
   {
     ROS_ERROR_NAMED(this->action_name_, "Failed to set mode to %s", mode.c_str());
     this->result_.success = false;
+    return false;
   }
 }
-void Flyer::arm()
+const bool Flyer::arm(bool arm)
 {
   ROS_INFO_NAMED(this->action_name_, "Arm called");
   mavros_msgs::CommandBool arm_cmd;
   arm_cmd.request.value = true;
-  if (arming_client_.call(arm_cmd) && arm_cmd.response.success)
+  // Call the server
+  bool success = arming_client_.call(arm_cmd);
+  ros::Duration(0.5).sleep();
+
+  if ( success && arm_cmd.response.success)
   {
-    ROS_INFO_NAMED(this->action_name_, "Armed");
+    ROS_INFO_NAMED(this->action_name_, arm?"Armed":"Disarmed");
     this->result_.success = true;
+    return true;
   }
   else
   {
-    ROS_ERROR_NAMED(this->action_name_, "Failed to arm");
+    ROS_ERROR_NAMED(this->action_name_, arm?"Failed to arm":"Failed to disarm");
     this->result_.success = false;
+    return false;
   }
 }
-void Flyer::disarm()
+const bool Flyer::disarm()
 {
-  ROS_INFO_NAMED(this->action_name_, "Disarm called");
-  mavros_msgs::CommandBool arm_cmd;
-  arm_cmd.request.value = false;
-  if (arming_client_.call(arm_cmd) && arm_cmd.response.success)
-  {
-    ROS_INFO_NAMED(this->action_name_, "Disarmed");
-    this->result_.success = true;
-  }
-  else
-  {
-    ROS_ERROR_NAMED(this->action_name_, "Failed to disarm");
-    this->result_.success = false;
-  }
+  mavros_msgs::PositionTarget pos_target;
+  pos_target.type_mask = mavros_msgs::PositionTarget::IGNORE_PX |
+                         mavros_msgs::PositionTarget::IGNORE_PY |
+                         mavros_msgs::PositionTarget::IGNORE_PZ |
+                         mavros_msgs::PositionTarget::IGNORE_AFX |
+                         mavros_msgs::PositionTarget::IGNORE_AFY |
+                         mavros_msgs::PositionTarget::IGNORE_AFZ |
+                         mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
+  pos_target.yaw = 0.0;
+  pos_target.coordinate_frame = mavros_msgs::PositionTarget::FRAME_BODY_NED;
+  pos_target.velocity.x = 0.0;
+  pos_target.velocity.y = 0.0;
+  pos_target.velocity.z = 0.0;
+  this->setpoint_pub_.publish(pos_target);
+  return this->arm(false);
 }
 
 void Flyer::takeoff()
@@ -190,6 +204,11 @@ void Flyer::land()
   ROS_INFO_NAMED(this->action_name_, "Land called");
   // Set the landing height
   this->move(Waypoints::HOME, true);
+  ros::Duration(2.0).sleep();
+  // auto waypoint = Waypoints::HOME;
+  // waypoint.first.z() -=0.5;
+  // this->move(waypoint, true);
+  // ros::Duration(1.0).sleep();
   this->move(Waypoints::LAND, false);
   this->disarm();
 }
@@ -206,33 +225,23 @@ void Flyer::validatePositionTarget(mavros_msgs::PositionTarget &pos_target){
     pos_target.position.z = std::min(std::max(pos_target.position.z, Waypoints::minZ), Waypoints::maxZ);
 }
 void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold){
-    this->poseSub(true);
-    // Validate the position target
-    this->validatePositionTarget(pos_target);
-    // Switch to off board if not
-    if (this->current_state_.mode != "OFFBOARD")
-    {
-      ROS_INFO_NAMED(this->action_name_, "Setting mode to OFFBOARD");
-      this->setMode("OFFBOARD");
-      if(!this->result_.success)
-      {
-        ROS_ERROR_NAMED(this->action_name_, "Failed to set mode to OFFBOARD");
-        return;
-      }
-      ros::Duration(0.5).sleep();
-    }
     // Arm if not
     if (!this->current_state_.armed)
     {
       ROS_INFO_NAMED(this->action_name_, "Arming");
-      this->arm();
-      if(!this->result_.success)
-      {
-        ROS_ERROR_NAMED(this->action_name_, "Failed to set mode to OFFBOARD");
-        return;
-      }
-      ros::Duration(2).sleep();
+      if(!this->arm()) return;
     }
+    // Validate the position target
+    this->validatePositionTarget(pos_target);
+    // Switch to off board if not
+    this->setpoint_pub_.publish(pos_target);
+    ros::spinOnce();
+    if (this->current_state_.mode != "OFFBOARD")
+    {
+      ROS_INFO_NAMED(this->action_name_, "Setting mode to OFFBOARD");
+      if(!this->setMode("OFFBOARD")) return;
+    }
+    this->poseSub(true);
     // Stop the hold timer so that new position target can be sent
     this->hold_timer_.stop();
     // Send the position target
