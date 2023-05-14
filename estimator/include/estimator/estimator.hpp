@@ -74,6 +74,8 @@ protected:
     this->flight_time_ = 0.0;
     this->filter_ = linearKF::KF();
   }
+  double startPredictionTime_;
+  double startPredictionAltitude_;
 public:
   /// @brief
   /// @param name

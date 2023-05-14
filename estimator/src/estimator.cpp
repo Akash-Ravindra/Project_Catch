@@ -8,7 +8,7 @@ const double defaultFlightTimeout = 10.0;
 
 // Bounding box for the net area
 const double netXMin = -2000;
-const double netXMax = 3000;// NEED TO CHANGE BACK TO 2000
+const double netXMax = 2000;// NEED TO CHANGE BACK TO 2000
 const double netYMin = -3000;
 const double netYMax = 2500;
 const double netZMin = 350.0;
@@ -23,6 +23,12 @@ Estimator::Estimator(std::string name)
       boost::bind(&Estimator::goalCallback, this));
   this->action_server_.start();
   ROS_INFO_NAMED(this->name_, "Started the estimator action server");
+  // Get the parameters
+  this->startPredictionAltitude_ = nh_.param("start_prediction_altitude", startPredictionAltitude);
+  this->startPredictionTime_ = nh_.param("start_prediction_time", startPredictionTime);
+  // Print the parameters
+  ROS_INFO_NAMED(this->name_, "start_prediction_altitude: %f", this->startPredictionAltitude_);
+  ROS_INFO_NAMED(this->name_, "start_prediction_time: %f", this->startPredictionTime_);
 };
 
 Estimator::~Estimator(){
@@ -178,7 +184,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
               : 0.0;
 
       // After some time, we can start predicting the path of the ball and
-      if (flight_time_ > startPredictionTime || this->filtered_hist_.back().z > startPredictionAltitude) {
+      if (flight_time_ > this->startPredictionTime_ || this->filtered_hist_.back().z > this->startPredictionAltitude_) {
         std::vector<geometry_msgs::Point> prediction;
         this->simulateFlight_(&prediction);
         // publish feedback
