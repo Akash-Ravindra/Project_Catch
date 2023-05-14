@@ -12,6 +12,13 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf2
   message_generation
+  geometry_msgs
+  tf2_ros
+)
+
+
+include_directories(
+  ${catkin_INCLUDE_DIRS}
 )
 
 ## System dependencies are found with CMake's conventions
@@ -71,6 +78,7 @@ find_package(catkin REQUIRED COMPONENTS
  generate_messages(
        DEPENDENCIES
        std_msgs
+       geometry_msgs
  )
 
 ################################################
@@ -105,7 +113,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES reorient
-#  CATKIN_DEPENDS roscpp std_msgs tf2
+ CATKIN_DEPENDS roscpp std_msgs tf2_ros geometry_msgs
 #  DEPENDS system_lib
 )
 
@@ -120,6 +128,9 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+find_package(Eigen3 REQUIRED)
+include_directories(${catkin_INCLUDE_DIR})
+
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/frame_transformer.cpp
@@ -133,7 +144,11 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(${PROJECT_NAME}_srv src/frame_transformer.cpp)
+add_executable(${PROJECT_NAME}_srv src/runner.cpp src/frame_transformer.cpp)
+# add_executable(${PROJECT_NAME}_srv src/static_brodcaster.cpp)
+
+
+
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
