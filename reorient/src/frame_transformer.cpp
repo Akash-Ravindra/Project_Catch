@@ -35,7 +35,10 @@ bool Transform::transform_service_callback(reorient::TransformDtoWRequest& req,r
     this->vicon_sub_=nh_.subscribe(req.viconTopic.c_str(), 1, &Transform::vicon_callback, this);
 
     /// wait for sometime to get the data
-    ros::Duration(1.0).sleep();
+    auto curr_time = ros::Time::now().toSec();
+    while(ros::Time::now().toSec() - curr_time < ros::Duration(1.0).toSec()){
+        ros::spinOnce();
+    }
 
     //Turn off the subscribers
     this->drone_sub_.shutdown();
