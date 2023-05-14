@@ -1,7 +1,7 @@
 #goal definition
-string droneFrame="mavrik"
-string viconTopic="/vicon/ENAE788m_mavrik/ENAE788m_mavrik"
-string dronePoseTopic="/mavros/local_position/pose"
+string droneFrame="mavrik_inertial"
+string viconTopic=/vicon/ENAE788m_mavrik/ENAE788m_mavrik
+string dronePoseTopic=/mavros/local_position/pose
 ---
 #result definition
-geometry_msgs/PoseStamped droneHome
+geometry_msgs/Transform  droneHome
