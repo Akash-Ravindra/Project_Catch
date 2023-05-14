@@ -1,4 +1,7 @@
 <?xml version="1.0"?>
 <launch>
+    <param name="start_prediction_time" type="double" value="0.5"/>
+    <param name="start_prediction_altitude" type="double" value="2500"/>
+    
     <node pkg="estimator" type="estimator_node" name="estimator_node" output="screen"/>
 </launch>
