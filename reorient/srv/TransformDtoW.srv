@@ -1,5 +1,7 @@
 #goal definition
-int32 order
+string droneFrame="mavrik"
+string viconTopic="/vicon/ENAE788m_mavrik/ENAE788m_mavrik"
+string dronePoseTopic="/mavros/local_position/pose"
 ---
 #result definition
-int32[] sequence
+geometry_msgs/PoseStamped droneHome
