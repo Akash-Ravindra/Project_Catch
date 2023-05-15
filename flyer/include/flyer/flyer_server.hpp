@@ -42,6 +42,8 @@ private:
     ros::Subscriber drone_pos_sub;
     // Server client to arm the drone
     ros::ServiceClient arming_client_;
+    // Land Client
+    ros::ServiceClient land_client_;
     // Subscriber to drone state
     ros::Subscriber state_sub_;
     // Sleep rate

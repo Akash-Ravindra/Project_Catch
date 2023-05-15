@@ -16,6 +16,8 @@ Flyer::Flyer(std::string name) : flight_action_server_(nh_, name, false), action
   this->set_mode_client_ = nh_.serviceClient<mavros_msgs::SetMode>("/mavros/set_mode");
   // Subscribe to the drone position
   this->arming_client_ = nh_.serviceClient<mavros_msgs::CommandBool>("/mavros/cmd/arming");
+  // Land client
+  this->land_client_ = nh_.serviceClient<mavros_msgs::CommandTOL>("mavros/cmd/land");
   // Subscribe to the drone position
   this->setpoint_pub_ = nh_.advertise<mavros_msgs::PositionTarget>("/mavros/setpoint_raw/local", 10);
   // Start the subscriber to the drone position
@@ -206,11 +208,16 @@ void Flyer::land()
   // Set the landing height
   this->move(Waypoints::HOME, true);
   ros::Duration(2.0).sleep();
-  // auto waypoint = Waypoints::HOME;
-  // waypoint.first.z() -=0.5;
-  // this->move(waypoint, true);
-  // ros::Duration(1.0).sleep();
-  this->move(Waypoints::LAND, false);
+  // Land
+  mavros_msgs::CommandTOL land_cmd;
+  land_cmd.request.altitude = Waypoints::LAND.first.z();
+  land_cmd.request.latitude = 0;
+  land_cmd.request.longitude = 0;
+  land_cmd.request.min_pitch = 0;
+  land_cmd.request.yaw = 0;
+  // Call the server
+  bool success = land_client_.call(land_cmd);
+  ros::Duration(0.5).sleep();
   this->disarm();
 }
 void Flyer::move(const std::pair<Eigen::Vector3d, Eigen::Vector3d>& pos_ori, const bool& hold)
