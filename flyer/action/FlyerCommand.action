@@ -1,6 +1,7 @@
 #goal
 uint32 cmdType
 string setMode
+geometry_msgs/TransformStamped worldToDrone
 geometry_msgs/Pose goalPose
 ---
 #result

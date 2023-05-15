@@ -8,6 +8,7 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <tf2/convert.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/PositionTarget.h>
 #include <mavros_msgs/State.h>
@@ -51,6 +52,9 @@ private:
     mavros_msgs::PositionTarget hold_target_;
     // Current drone State
     mavros_msgs::State current_state_;
+    // The world to drone transform from client
+    geometry_msgs::TransformStamped requestedTransform_;
+
     // Hold current drone position
     void holdCB(const ros::TimerEvent &event);
     struct DronePose

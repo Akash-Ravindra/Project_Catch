@@ -43,6 +43,7 @@ void Flyer::actionGoalCB()
 {
   auto goal = this->flight_action_server_.acceptNewGoal();
   this->is_goal_active_ = true;
+  this->requestedTransform_ = goal->worldToDrone;
   switch ((FlyerCommand)goal->cmdType)
   {
     case FlyerCommand::TAKEOFF:
@@ -220,6 +221,8 @@ void Flyer::move(const std::pair<Eigen::Vector3d, Eigen::Vector3d>& pos_ori, con
   this->move(pos_target, hold);
 }
 void Flyer::validatePositionTarget(mavros_msgs::PositionTarget &pos_target){
+    tf2::doTransform(pos_target.position, pos_target.position, this->requestedTransform_);
+    
     pos_target.position.x = std::min(std::max(pos_target.position.x, Waypoints::minX), Waypoints::maxX);
     pos_target.position.y = std::min(std::max(pos_target.position.y, Waypoints::minY), Waypoints::maxY);
     pos_target.position.z = std::min(std::max(pos_target.position.z, Waypoints::minZ), Waypoints::maxZ);
