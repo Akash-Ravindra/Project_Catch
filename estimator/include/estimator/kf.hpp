@@ -66,15 +66,15 @@ private:
   /// @param dt
   void updateParams_(const double &dt);
   void updateParams_();
-
 public:
+
   /// @brief The main constructor
   /// @param P
   /// @param R
   /// @param H
   /// @param gravity
   KF(const MatrixXd &P, const MatrixXd &R, const MatrixXd &H,
-     const double &gravity = 9.81);
+     const double &gravity = -9.81);
 
   /// @brief The constructor with gravity
   /// @param gravity
