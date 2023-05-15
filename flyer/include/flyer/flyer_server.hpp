@@ -139,10 +139,10 @@ public:
     void land();
     /// @brief Given the pose and orientation it moves
     /// @param pos_target
-    void move(mavros_msgs::PositionTarget &pos_target, const bool &hold = true);
+    void move(mavros_msgs::PositionTarget &pos_target, const bool &hold = true, const bool &absolute = true);
     /// @brief Given the pair of pos and ori it moves
     /// @param vec 
-    void move(const std::pair<Eigen::Vector3d, Eigen::Vector3d> &vec, const bool &hold = true);
+    void move(const std::pair<Eigen::Vector3d, Eigen::Vector3d> &vec, const bool &hold = true, const bool &absolute = true);
     /// @brief Ensures that the drone is always within the limits
     /// @param pos_target 
     void validatePositionTarget(mavros_msgs::PositionTarget &pos_target);

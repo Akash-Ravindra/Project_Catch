@@ -58,7 +58,7 @@ void Flyer::actionGoalCB()
       break;
     case FlyerCommand::HOME:
       ROS_INFO_NAMED(this->action_name_, "Home command received");
-      this->move(Waypoints::HOME, true);
+      this->move(Waypoints::HOME, true, false);
       break;
     case FlyerCommand::MOVE:
       ROS_INFO_NAMED(this->action_name_, "Move command received");
@@ -200,13 +200,13 @@ void Flyer::takeoff()
 {
   ROS_INFO_NAMED(this->action_name_, "Takeoff called");
   // Set the takeoff height
-  this->move(Waypoints::TAKEOFF);
+  this->move(Waypoints::TAKEOFF, true,false);
 }
 void Flyer::land()
 {
   ROS_INFO_NAMED(this->action_name_, "Land called");
   // Set the landing height
-  this->move(Waypoints::HOME, true);
+  this->move(Waypoints::HOME, true, false);
   ros::Duration(2.0).sleep();
   // Land
   mavros_msgs::CommandTOL land_cmd;
@@ -220,21 +220,20 @@ void Flyer::land()
   ros::Duration(0.5).sleep();
   this->disarm();
 }
-void Flyer::move(const std::pair<Eigen::Vector3d, Eigen::Vector3d>& pos_ori, const bool& hold)
+void Flyer::move(const std::pair<Eigen::Vector3d, Eigen::Vector3d>& pos_ori, const bool& hold,const bool& absolute)
 {
   ROS_INFO_NAMED(this->action_name_, "Move called");
   mavros_msgs::PositionTarget pos_target;
   this->vector3dToPositionTarget(pos_ori, pos_target);
-  this->move(pos_target, hold);
+  this->move(pos_target, hold, absolute);
 }
 void Flyer::validatePositionTarget(mavros_msgs::PositionTarget &pos_target){
-    tf2::doTransform(pos_target.position, pos_target.position, this->requestedTransform_);
     
     pos_target.position.x = std::min(std::max(pos_target.position.x, Waypoints::minX), Waypoints::maxX);
     pos_target.position.y = std::min(std::max(pos_target.position.y, Waypoints::minY), Waypoints::maxY);
     pos_target.position.z = std::min(std::max(pos_target.position.z, Waypoints::minZ), Waypoints::maxZ);
 }
-void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold){
+void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold, const bool& absolute){
     // Arm if not
     if (!this->current_state_.armed)
     {
@@ -243,6 +242,9 @@ void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold){
     }
     // Validate the position target
     this->validatePositionTarget(pos_target);
+    if(absolute){
+      tf2::doTransform(pos_target.position, pos_target.position, this->requestedTransform_);
+    }
     // Switch to off board if not
     this->setpoint_pub_.publish(pos_target);
     ros::spinOnce();
