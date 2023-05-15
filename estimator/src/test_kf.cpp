@@ -25,13 +25,12 @@ int main() {
   double v0 = 10.0;
   double theta = M_PI / 4.0;
   double g = 9.81;
-  double dt = 0.0001;
+  double dt = 0.01;
   double t_max = 2.0;
   generateParabola(parabola, v0, theta, g, dt, t_max);
 
   // Create a kalman filter
   linearKF::KF kf = {};
-
   // Step through the parabola
   auto counter = 0;
   for (auto &point : parabola) {
@@ -39,9 +38,10 @@ int main() {
     Eigen::Matrix<double, 6, 1> state;
     Eigen::Matrix<double, 6, 6> cov;
     kf.getStates(state, cov);
-    std::cout << "State: " << state.transpose() << std::endl;
+    std::cout << "State: " << state.transpose() << "|" << point.transpose() << std::endl;
     counter++;
-    if (counter > 10) {
+    if (counter > 100) {
+    std::cout << "P" << std::endl << cov << std::endl;
       break;
     }
   }

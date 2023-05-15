@@ -104,6 +104,9 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
     auto mkrs = markers.get()->markers;
     auto name_to_find = objectName_;
     // Find the marker with the name that we want to track
+                  /////////////////////////////
+                  //// Bound box test here ////
+                  /////////////////////////////
     auto it = std::find_if(
         mkrs.begin(), mkrs.end(),
         [name_to_find](const vicon_bridge::Marker &m) {
@@ -120,19 +123,14 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       cur.translation.x = cur.translation.x / 1000.0;
       cur.translation.y = cur.translation.y / 1000.0;
       cur.translation.z = cur.translation.z / 1000.0;
-
-      /////////////////////////////
-      //// Bound box test here ////
-      /////////////////////////////
-
-      // if it passes the bounding box test
+      // Add the current marker to the history
       this->feedback_.isValid = true;
       this->feedback_.objectName = this->objectName_;
       if (this->msg_hist_.empty()) {
         // This would be the first time its seeing the ball
         this->flight_timer_ = nh_.createTimer(
             ros::Duration(defaultFlightTimeout, 0),
-            &Estimator::flighttimerCallback, this, false, false);
+            &Estimator::flighttimerCallback, this, true, false);
         this->flight_timer_.start();
         ROS_INFO_NAMED(this->name_,
                        "Found the marker and starting flight timer");
@@ -204,6 +202,8 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
         // Stop the action server
         this->action_server_.setSucceeded();
         ROS_INFO_NAMED(this->name_, "Ball has landed, shutting down");
+        
+        return;
       }
       // Publish the feedback
       this->action_server_.publishFeedback(this->feedback_);
@@ -217,7 +217,8 @@ void Estimator::simulateFlight_(std::vector<geometry_msgs::Point> *prediction) {
   auto cpy_filter = this->filter_;
   auto cur = this->msg_hist_.back().first;
   prediction->push_back(cur);
-  while (prediction->back().z > 0.5 && prediction->size() < 1.5 / 0.001) {
+  // Simulate the flight of the ball for 1.5 seconds
+  while (prediction->back().z > 0.5 && prediction->size() < ros::Duration(2.0,0).toSec() / defaultPredictionTimestep) {
     cpy_filter.step(defaultPredictionTimestep);
     Eigen::Matrix<double, 6, 1> state;
     Eigen::Matrix<double, 6, 6> cov;
