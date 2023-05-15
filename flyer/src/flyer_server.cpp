@@ -98,7 +98,7 @@ void Flyer::holdCB(const ros::TimerEvent& event)
 {
   if(ros::ok() && this->current_state_.mode == "OFFBOARD" && this->current_state_.armed)
   {
-    ROS_INFO_NAMED(this->action_name_, "Hold timer triggered");
+    // ROS_INFO_NAMED(this->action_name_, "Hold timer triggered");
     this->setpoint_pub_.publish(this->hold_target_);
   }
   else
@@ -110,7 +110,7 @@ void Flyer::holdCB(const ros::TimerEvent& event)
 
 void Flyer::dronePosCB(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-  ROS_INFO_NAMED(this->action_name_, "Drone position received");
+  // ROS_INFO_NAMED(this->action_name_, "Drone position received");
   this->current_pose_.is_valid = true;
 
   this->current_pose_.pos.x() = msg->pose.position.x;
@@ -257,7 +257,7 @@ void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold, cons
     // Stop the hold timer so that new position target can be sent
     this->hold_timer_.stop();
     // Send the position target
-    ROS_INFO_NAMED(this->action_name_, "Sending position target");
+    ROS_INFO_NAMED(this->action_name_, "Sending position target x:%f|y:%f|z:%f", pos_target.position.x, pos_target.position.y, pos_target.position.z);
     double time = ros::Time::now().toSec();
     while(ros::ok() && this->is_goal_active_){
       this->setpoint_pub_.publish(pos_target);
