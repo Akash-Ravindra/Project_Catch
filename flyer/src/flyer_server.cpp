@@ -220,6 +220,9 @@ void Flyer::validatePositionTarget(mavros_msgs::PositionTarget &pos_target){
     pos_target.position.z = std::min(std::max(pos_target.position.z, Waypoints::minZ), Waypoints::maxZ);
 }
 void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold, const bool& absolute){
+    if(absolute, const bool& absolute){
+      tf2::doTransform(pos_target.position, pos_target.position, this->requestedTransform_);
+    }
     // Arm if not
     if (!this->current_state_.armed)
     {
