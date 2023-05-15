@@ -5,7 +5,8 @@
 #include <estimator/ParabolicTrackerAction.h>
 #include <flyer/FlyerCommandAction.h>
 #include <reorient/TransformDtoW.h>
-#include <flyer/waypoint.hpp>
+#include "../../../flyer/include/flyer/waypoint.hpp"
+#include <tf2_ros/transform_listener.h>
 
 
 namespace catcher{
@@ -26,7 +27,7 @@ namespace catcher{
         // Feedback callback check the state of the tracker
         void trackerFeedbackCallback(const estimator::ParabolicTrackerFeedbackConstPtr& feedback);
         // Done callback
-        void trackerDoneCallback(const actionlib::SimpleClientGoalState& state, const estimator::ParabolicTrackerResultConstPtr& result);
+        void trackerDoneCallback(const actionlib::SimpleClientGoalState& state, const estimator::ParabolicTrackerResultConstPtr& result){};
 
         // Flyer action client
         actionlib::SimpleActionClient<flyer::FlyerCommandAction> flyerClient_;
@@ -34,6 +35,7 @@ namespace catcher{
             actionlib::SimpleActionClient<flyer::FlyerCommandAction> *flyerClient;
             bool active = false;
             flyer::FlyerCommandGoal goal;
+            geometry_msgs::Point target;
         }flyerState_;
         // Active callback
         void flyerActiveCallback(){this->flyerState_.active = true;}
@@ -54,6 +56,7 @@ namespace catcher{
         //Async spinner
         ros::AsyncSpinner spinner_;
 
+        geometry_msgs::TransformStamped worldToDrone_=geometry_msgs::TransformStamped();
 
         public:
         /// @brief 
@@ -61,16 +64,10 @@ namespace catcher{
         Catcher(std::string name);
         /// @brief
         /// @param
-        ~Catcher();
+        ~Catcher(){};
         /// @brief 
         /// @param event 
         void tickTimerCallback(const ros::TimerEvent& event);
-        /// @brief 
-        /// @param feedback 
-        void flyerFeedbackCallback(const flyer::FlyerCommandFeedbackConstPtr& feedback);
-        /// @brief 
-        /// @param feedback 
-        void trackerFeedbackCallback(const estimator::ParabolicTrackerFeedbackConstPtr& feedback);
     };
 }
 
