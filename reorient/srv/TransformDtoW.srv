@@ -1,5 +1,5 @@
 #goal definition
-string droneFrame="mavrik_inertial"
+string droneFrame=mavrik_inertial
 string viconTopic=/vicon/ENAE788m_mavrik/ENAE788m_mavrik
 string dronePoseTopic=/mavros/local_position/pose
 ---
