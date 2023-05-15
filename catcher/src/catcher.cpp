@@ -63,7 +63,7 @@ void Catcher::trackerFeedbackCallback(
     const estimator::ParabolicTrackerFeedbackConstPtr &feedback) {
   switch (this->state_) {
   case IDLE:
-    {this->state_ = ERROR;}
+    {this->state_ = ERROR;}/// NEEDS TO BE CHANGED BACK TO TRACKER
     break;
   case TRACKING:
     {// check the feedback for valid traj

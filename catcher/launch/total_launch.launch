@@ -1,0 +1,7 @@
+<launch>
+    <include file="$(find reorient)/launch/reorient.launch" />
+    <include file="$(find estimator)/launch/total_estimator.launch" />
+    <include file="$(find flyer)/launch/flyer.launch" />
+    <include file="$(find vicon_bridge)/launch/vicon.launch" />
+    <node pkg="catcher" type="catcher_node" name="catcher" output="screen" />
+</launch>
