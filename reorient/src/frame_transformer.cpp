@@ -14,17 +14,19 @@ void Transform::vicon_callback(const geometry_msgs::TransformStampedConstPtr& ms
     Eigen::Matrix4d pose;
     Eigen::Quaterniond q(msg->transform.rotation.w, msg->transform.rotation.x, msg->transform.rotation.y, msg->transform.rotation.z);
     Eigen::Vector3d t(msg->transform.translation.x, msg->transform.translation.y, msg->transform.translation.z);
-    pose<< q.toRotationMatrix().transpose(), -q.toRotationMatrix().transpose()*t, 0, 0, 0, 1;
+    pose << q.toRotationMatrix(), t, 0, 0, 0, 1;
     this->vicon_poses_ = pose;
     
 }
+//Multiplication fixed
 void Transform::drone_callback(const geometry_msgs::PoseStamped::ConstPtr& msg){
     ROS_INFO("DRONE CALLBACK");\
     // conver pose to matrix
     Eigen::Matrix4d pose;
     Eigen::Quaterniond q(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z);
     Eigen::Vector3d t(msg->pose.position.x, msg->pose.position.y, msg->pose.position.z);
-    pose << q.toRotationMatrix(), t, 0, 0, 0, 1;
+    // Ignnore drone body to drone inertia rotation
+    pose<< Eigen::Matrix3d::Identity(), -q.toRotationMatrix().transpose()*t, 0, 0, 0, 1;
     this->drone_poses_ = pose;
     }
 bool Transform::transform_service_callback(reorient::TransformDtoWRequest& req,reorient::TransformDtoWResponse& resp){
@@ -52,11 +54,24 @@ bool Transform::transform_service_callback(reorient::TransformDtoWRequest& req,r
     t.z = T(2,3);
     geometry_msgs::Quaternion q;
     Eigen::Quaterniond q_eigen(T.block<3,3>(0,0));
+    // Ignore rotation, fixed 90 degree rotation
+    // Eigen::Quaterniond q_2;
+    // q_2 = Eigen::AngleAxisd(0, Eigen::Vector3d::UnitX())
+    //     * Eigen::AngleAxisd(0, Eigen::Vector3d::UnitY())
+    //     * Eigen::AngleAxisd(3.141/2, Eigen::Vector3d::UnitZ());
+    // q_eigen = q_2 * q_eigen ;
     q_eigen.normalize();
     q.x = q_eigen.x();
     q.y = q_eigen.y();
     q.z = q_eigen.z();
     q.w = q_eigen.w();
+
+    //Hardcode the rotation of 90 degree around Z
+    // q.x = 0;
+    // q.y = 0;
+    // q.z = 1;
+    // q.w = 0;
+
 
     // publish the transform
     geometry_msgs::TransformStamped transformStamped;
