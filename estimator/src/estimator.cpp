@@ -40,7 +40,7 @@ Estimator::~Estimator(){
 };
 
 void Estimator::preemptCallback() {
-  ROS_INFO("%s: Preempted", this->name_.c_str());
+  ROS_DEBUG("%s: Preempted", this->name_.c_str());
   this->action_server_.setPreempted();
 }
 
@@ -54,7 +54,7 @@ void Estimator::goalCallback() {
                                             : goal.get()->viconTopic.c_str());
     this->clearFeedback();
     this->resetAccumulators_();
-    ROS_INFO_NAMED(this->name_, "Started tracking '%s'", objectName_.c_str());
+    ROS_DEBUG_NAMED(this->name_, "Started tracking '%s'", objectName_.c_str());
     // subscribe to the vicon topic
     this->vicon_sub_ =
         nh_.subscribe(goal.get()->viconTopic.empty() ? defaultViconTopic
@@ -69,7 +69,7 @@ void Estimator::goalCallback() {
     this->objectName_ = goal.get()->objectName;
     this->targetAltitude_ = goal.get()->targetAltitude;
   } else {
-    ROS_INFO_NAMED(this->name_, "Received goal but start tracker not set");
+    ROS_DEBUG_NAMED(this->name_, "Received goal but start tracker not set");
   }
 }
 
@@ -138,7 +138,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
             nh_.createTimer(ros::Duration(defaultFlightTimeout, 0),
                             &Estimator::flighttimerCallback, this, true, false);
         this->flight_timer_.start();
-        ROS_INFO_NAMED(this->name_,
+        ROS_DEBUG_NAMED(this->name_,
                        "Found the marker and starting flight timer");
       }
 
@@ -158,7 +158,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       this->msg_hist_.push_back(std::pair<geometry_msgs::Point, double>(
           cur.translation, markers.get()->header.stamp.toSec()));
       // Step the kalman filter
-      ROS_INFO_NAMED(this->name_,
+      ROS_DEBUG_NAMED(this->name_,
                      "Found the marker '%s' at (%f, %f, %f) Stepping the "
                      "kalman filter with dt: %f",
                      cur.marker_name.c_str(), cur.translation.x,
@@ -170,7 +170,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       Eigen::Matrix<double, 6, 1> state;
       Eigen::Matrix<double, 6, 6> cov;
       this->filter_.getStates(state, cov);
-      ROS_INFO_NAMED(this->name_, "Filtered state: (%f, %f, %f)", state(0),
+      ROS_DEBUG_NAMED(this->name_, "Filtered state: (%f, %f, %f)", state(0),
                      state(1), state(2));
       // Store the filtered states
       geometry_msgs::Point pred;
@@ -220,19 +220,19 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
 
 void Estimator::simulateFlight_(std::vector<geometry_msgs::Point> *prediction) {
   // Simulate the flight of the ball
-  ROS_INFO_NAMED(this->name_, "Simulating the flight of the ball");
+  ROS_DEBUG_NAMED(this->name_, "Simulating the flight of the ball");
   auto cpy_filter = this->filter_;
   auto cur = this->msg_hist_.back().first;
   prediction->push_back(cur);
+  Eigen::Matrix<double, 6, 1> state;
+  Eigen::Matrix<double, 6, 6> cov;
+  geometry_msgs::Point pred;
   // Simulate the flight of the ball for 1.5 seconds
   while (prediction->back().z > 0.5 &&
          prediction->size() <
              ros::Duration(2.0, 0).toSec() / defaultPredictionTimestep) {
     cpy_filter.step(defaultPredictionTimestep);
-    Eigen::Matrix<double, 6, 1> state;
-    Eigen::Matrix<double, 6, 6> cov;
     cpy_filter.getStates(state, cov);
-    geometry_msgs::Point pred;
     eigenToPoint(state, &pred);
     // Add the prediction to the vector
     prediction->push_back(pred);
