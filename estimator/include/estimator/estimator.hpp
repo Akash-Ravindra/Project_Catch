@@ -20,6 +20,7 @@ protected:
 
   estimator::ParabolicTrackerFeedback feedback_;
   std::string objectName_;
+  int targetAltitude_;
   estimator::ParabolicTrackerResult result_;
 
   /// @brief Subscriber for the vicon msgs
@@ -48,7 +49,8 @@ protected:
                         const double &interceptDelta,
                         const double &interceptTime,
                         const geometry_msgs::Point &currentPosition,
-                        const std::vector<geometry_msgs::Point> &predictedTrajectory) {
+                        const std::vector<geometry_msgs::Point> &predictedTrajectory,
+                        const int &targetPredictionIndex) {
     this->feedback_.isValid = isValid;
     this->feedback_.objectName = name;
     this->feedback_.deltaAltitude = deltaAltitude;
@@ -56,11 +58,12 @@ protected:
     this->feedback_.interceptTime = interceptTime;
     this->feedback_.currentPosition = currentPosition;
     this->feedback_.predictedTrajectory = predictedTrajectory;
+    this->feedback_.targetPredictionIndex = targetPredictionIndex;
   }
   void clearFeedback() {
     this->populateFeedback(false, "", 0.0, 0.0, 0.0,
                            geometry_msgs::Point(),
-                           std::vector<geometry_msgs::Point>());
+                           std::vector<geometry_msgs::Point>(), 0);
   }
   void simulateFlight_(std::vector<geometry_msgs::Point> *prediction);
   void eigenToPoint(const Eigen::VectorXd &e, geometry_msgs::Point *p){

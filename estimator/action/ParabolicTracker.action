@@ -1,6 +1,7 @@
 # Define the goal
 bool startTracker
 string objectName
+float32 targetAltitude
 string viconTopic
 ---
 # Define the result
@@ -15,4 +16,5 @@ geometry_msgs/Point currentPosition
 float32 interceptDelta
 float32 interceptTime
 geometry_msgs/Point[] predictedTrajectory
+int32 targetPredictionIndex
 

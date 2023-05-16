@@ -8,7 +8,7 @@ const double defaultFlightTimeout = 10.0;
 
 // Bounding box for the net area
 const double netXMin = -2000;
-const double netXMax = 2000;// NEED TO CHANGE BACK TO 2000
+const double netXMax = 2000; // NEED TO CHANGE BACK TO 2000
 const double netYMin = -3000;
 const double netYMax = 2500;
 const double netZMin = 350.0;
@@ -24,11 +24,15 @@ Estimator::Estimator(std::string name)
   this->action_server_.start();
   ROS_INFO_NAMED(this->name_, "Started the estimator action server");
   // Get the parameters
-  this->startPredictionAltitude_ = nh_.param("start_prediction_altitude", startPredictionAltitude);
-  this->startPredictionTime_ = nh_.param("start_prediction_time", startPredictionTime);
+  this->startPredictionAltitude_ =
+      nh_.param("start_prediction_altitude", startPredictionAltitude);
+  this->startPredictionTime_ =
+      nh_.param("start_prediction_time", startPredictionTime);
   // Print the parameters
-  ROS_INFO_NAMED(this->name_, "start_prediction_altitude: %f", this->startPredictionAltitude_);
-  ROS_INFO_NAMED(this->name_, "start_prediction_time: %f", this->startPredictionTime_);
+  ROS_INFO_NAMED(this->name_, "start_prediction_altitude: %f",
+                 this->startPredictionAltitude_);
+  ROS_INFO_NAMED(this->name_, "start_prediction_time: %f",
+                 this->startPredictionTime_);
 };
 
 Estimator::~Estimator(){
@@ -43,7 +47,7 @@ void Estimator::preemptCallback() {
 void Estimator::goalCallback() {
   auto goal = this->action_server_.acceptNewGoal();
   if (goal.get()->startTracker) {
-    // Clear the feedhback
+    // Clear the feedback
     ROS_INFO("%s: Received the goal from client to track '%s' on '%s'",
              this->name_.c_str(), goal.get()->objectName.c_str(),
              goal.get()->viconTopic.empty() ? defaultViconTopic.c_str()
@@ -62,17 +66,19 @@ void Estimator::goalCallback() {
                         &Estimator::actiontimerCallback, this, true, false);
     this->action_timer_.start();
     // Get the name of the object that we want to track
-    objectName_ = goal.get()->objectName;
+    this->objectName_ = goal.get()->objectName;
+    this->targetAltitude_ = goal.get()->targetAltitude;
   } else {
     ROS_INFO_NAMED(this->name_, "Received goal but start tracker not set");
   }
 }
 
 void Estimator::actiontimerCallback(const ros::TimerEvent &__event) {
-  if(!this->action_server_.isActive())
+  if (!this->action_server_.isActive())
     return;
   // Fail the action call and return failed result
-  ROS_ERROR_NAMED(this->name_, "Action timer expired, closing the action server");
+  ROS_ERROR_NAMED(this->name_,
+                  "Action timer expired, closing the action server");
   this->action_server_.setAborted();
   this->resetAccumulators_();
   this->clearFeedback();
@@ -102,11 +108,11 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
   // Check if there are any markers detected
   if (markers.get()->markers.size()) {
     auto mkrs = markers.get()->markers;
-    auto name_to_find = objectName_;
+    auto name_to_find = this->objectName_;
     // Find the marker with the name that we want to track
-                  /////////////////////////////
-                  //// Bound box test here ////
-                  /////////////////////////////
+    /////////////////////////////
+    //// Bound box test here ////
+    /////////////////////////////
     auto it = std::find_if(
         mkrs.begin(), mkrs.end(),
         [name_to_find](const vicon_bridge::Marker &m) {
@@ -128,9 +134,9 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       this->feedback_.objectName = this->objectName_;
       if (this->msg_hist_.empty()) {
         // This would be the first time its seeing the ball
-        this->flight_timer_ = nh_.createTimer(
-            ros::Duration(defaultFlightTimeout, 0),
-            &Estimator::flighttimerCallback, this, true, false);
+        this->flight_timer_ =
+            nh_.createTimer(ros::Duration(defaultFlightTimeout, 0),
+                            &Estimator::flighttimerCallback, this, true, false);
         this->flight_timer_.start();
         ROS_INFO_NAMED(this->name_,
                        "Found the marker and starting flight timer");
@@ -145,7 +151,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
           (this->msg_hist_.empty() ? 0.0
                                    : markers.get()->header.stamp.toSec() -
                                          (this->msg_hist_.back().second));
-      
+
       // Elapsed time
       this->flight_time_ += dt;
       // save the msg and the timestamp
@@ -180,21 +186,22 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
                     ? 1.0
                     : -1.0
               : 0.0;
-
+      // Default target prediction index is -1
+      this->feedback_.targetPredictionIndex = -1;
       // After some time, we can start predicting the path of the ball and
-      if (flight_time_ > this->startPredictionTime_ || this->filtered_hist_.back().z > this->startPredictionAltitude_) {
+      if (flight_time_ > this->startPredictionTime_ ||
+          this->filtered_hist_.back().z > this->startPredictionAltitude_) {
         std::vector<geometry_msgs::Point> prediction;
         this->simulateFlight_(&prediction);
         // publish feedback
         this->feedback_.predictedTrajectory = prediction;
         this->feedback_.interceptTime =
             prediction.size() * defaultPredictionTimestep;
-
       }
 
       // If the ball is on the ground NO CATCH CONDITION
-      if (this->filtered_hist_.back().z < 0.5 && this->filtered_hist_.size() >
-                                                      20) {
+      if (this->filtered_hist_.back().z < 0.5 &&
+          this->filtered_hist_.size() > 20) {
         // Stop the flight timer
         this->flight_timer_.stop();
         // Stop the vicon subscriber
@@ -202,7 +209,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
         // Stop the action server
         this->action_server_.setSucceeded();
         ROS_INFO_NAMED(this->name_, "Ball has landed, shutting down");
-        
+
         return;
       }
       // Publish the feedback
@@ -218,13 +225,23 @@ void Estimator::simulateFlight_(std::vector<geometry_msgs::Point> *prediction) {
   auto cur = this->msg_hist_.back().first;
   prediction->push_back(cur);
   // Simulate the flight of the ball for 1.5 seconds
-  while (prediction->back().z > 0.5 && prediction->size() < ros::Duration(2.0,0).toSec() / defaultPredictionTimestep) {
+  while (prediction->back().z > 0.5 &&
+         prediction->size() <
+             ros::Duration(2.0, 0).toSec() / defaultPredictionTimestep) {
     cpy_filter.step(defaultPredictionTimestep);
     Eigen::Matrix<double, 6, 1> state;
     Eigen::Matrix<double, 6, 6> cov;
     cpy_filter.getStates(state, cov);
     geometry_msgs::Point pred;
     eigenToPoint(state, &pred);
+    // Add the prediction to the vector
     prediction->push_back(pred);
+    // Check if the simulated ball has reached the target catch altitude
+    this->feedback_.targetPredictionIndex =
+        this->feedback_.targetPredictionIndex == -1
+            ? ((prediction->back().z < this->targetAltitude_)
+                   ? prediction->size()
+                   : -1)
+            : this->feedback_.targetPredictionIndex;
   }
 }
