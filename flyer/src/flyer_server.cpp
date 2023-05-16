@@ -21,7 +21,6 @@ Flyer::Flyer(std::string name) : flight_action_server_(nh_, name, false), action
   // Subscribe to the drone position
   this->setpoint_pub_ = nh_.advertise<mavros_msgs::PositionTarget>("/mavros/setpoint_raw/local", 10);
   // Start the subscriber to the drone position
-  ROS_INFO_NAMED(this->action_name_, "Action server started");
   // Start the hold timer
   this->hold_timer_ = nh_.createTimer(ros::Rate(cmdRate), &Flyer::holdCB, this, false, false);
   // Wait for the connection with the drone
@@ -33,6 +32,7 @@ Flyer::Flyer(std::string name) : flight_action_server_(nh_, name, false), action
     ros::Duration(0.5).sleep();
   }
   // Start the action server
+  ROS_INFO_NAMED(this->action_name_, "Action server started");
   this->flight_action_server_.start();
   ROS_INFO_NAMED(this->action_name_, "Drone connected");
 }
@@ -98,7 +98,7 @@ void Flyer::holdCB(const ros::TimerEvent& event)
 {
   if(ros::ok() && this->current_state_.mode == "OFFBOARD" && this->current_state_.armed)
   {
-    // ROS_INFO_NAMED(this->action_name_, "Hold timer triggered");
+    ROS_DEBUG_NAMED(this->action_name_, "Hold timer triggered");
     this->setpoint_pub_.publish(this->hold_target_);
   }
   else
@@ -110,7 +110,7 @@ void Flyer::holdCB(const ros::TimerEvent& event)
 
 void Flyer::dronePosCB(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
-  // ROS_INFO_NAMED(this->action_name_, "Drone position received");
+  ROS_DEBUG_NAMED(this->action_name_, "Drone position received");
   this->current_pose_.is_valid = true;
 
   this->current_pose_.pos.x() = msg->pose.position.x;
@@ -135,7 +135,7 @@ void Flyer::stateCB(const mavros_msgs::State::ConstPtr& msg)
 
 const bool Flyer::setMode(const std::string& mode)
 {
-  ROS_INFO_NAMED(this->action_name_, "Set mode called");
+  ROS_DEBUG_NAMED(this->action_name_, "Set mode called");
   mavros_msgs::SetMode set_mode;
   set_mode.request.custom_mode = mode;
   // Call the server
@@ -157,7 +157,7 @@ const bool Flyer::setMode(const std::string& mode)
 }
 const bool Flyer::arm(bool arm)
 {
-  ROS_INFO_NAMED(this->action_name_, "Arm called");
+  ROS_DEBUG_NAMED(this->action_name_, "Arm called");
   mavros_msgs::CommandBool arm_cmd;
   arm_cmd.request.value = true;
   // Call the server
@@ -184,13 +184,13 @@ const bool Flyer::disarm()
 
 void Flyer::takeoff()
 {
-  ROS_INFO_NAMED(this->action_name_, "Takeoff called");
+  ROS_DEBUG_NAMED(this->action_name_, "Takeoff called");
   // Set the takeoff height
   this->move(Waypoints::TAKEOFF, true,false);
 }
 void Flyer::land()
 {
-  ROS_INFO_NAMED(this->action_name_, "Land called");
+  ROS_DEBUG_NAMED(this->action_name_, "Land called");
   // Set the landing height
   this->move(Waypoints::HOME, true, false);
   ros::Duration(2.0).sleep();
@@ -208,7 +208,7 @@ void Flyer::land()
 }
 void Flyer::move(const std::pair<Eigen::Vector3d, Eigen::Vector3d>& pos_ori, const bool& hold,const bool& absolute)
 {
-  ROS_INFO_NAMED(this->action_name_, "Move called");
+  ROS_DEBUG_NAMED(this->action_name_, "Move called");
   mavros_msgs::PositionTarget pos_target;
   this->vector3dToPositionTarget(pos_ori, pos_target);
   this->move(pos_target, hold, absolute);
@@ -254,7 +254,7 @@ void Flyer::move(mavros_msgs::PositionTarget& pos_target, const bool& hold, cons
       if(ros::Time::now().toSec() - time > Waypoints::timeout) {this->result_.success=false;break;}
     }
     if(!this->is_goal_active_ || !this->result_.success){
-      ROS_INFO_NAMED(this->action_name_, "Goal cancelled or not reached");
+      ROS_WARN_NAMED(this->action_name_, "Goal cancelled or not reached");
       ros::spinOnce();
       pos_target.position.x = this->current_pose_.pos.x();
       pos_target.position.y = this->current_pose_.pos.y();
