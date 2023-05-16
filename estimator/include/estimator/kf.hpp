@@ -30,6 +30,8 @@ private:
   Matrix<double, 6, 6> A_;
   // Control input matrix
   Matrix<double, 6, 3> B_;
+  // Identity matrix
+  Matrix<double, 6, 6> I_=Matrix<double, 6, 6>::Identity();
   // Accumulated mesurement
   std::vector<Vector3d> history_;
   // Average timestep
