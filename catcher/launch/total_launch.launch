@@ -7,13 +7,15 @@
     
     
     <arg name="node_start_delay" default="5.0" />   
-    <arg name="offboard_output"     default="false"/>
-    <arg name="veh_name" default="VOXL1"/>
+    <arg name="mavros_run"          default="true"/>
+	<arg name="offboard_output"     default="true"/>
+	<arg name="veh_name" default="VOXL1"/>
 
-    <!-- vim: set ft=xml noet : -->
+
+	<!-- vim: set ft=xml noet : -->
 	<!-- example launch script for PX4 based FCU's -->
 
-	<arg name="fcu_url" default="udp://127.0.0.1:14540@:14540" />
+	<arg name="fcu_url" default="udp://127.0.0.1:14551@:14551" />
 	<arg name="gcs_url" default="" />
 	<arg name="tgt_system" default="1" />
 	<arg name="tgt_component" default="1" />
@@ -33,7 +35,6 @@
 		<arg name="fcu_protocol" value="$(arg fcu_protocol)" />
 		<arg name="respawn_mavros" default="$(arg respawn_mavros)" />
 	</include>
-
 
 
 
