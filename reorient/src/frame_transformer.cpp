@@ -6,10 +6,11 @@ Transform::Transform(){
     // action_timeout_ = nh_.createTimer(ros::Duration(0.1), &Transform::timer_callback, this);
     // Service
     service_ = nh_.advertiseService("transform_service", &Transform::transform_service_callback, this);
+    ROS_INFO("Transform service started");
 };
 Transform::~Transform(){};
 void Transform::vicon_callback(const geometry_msgs::TransformStampedConstPtr& msg){
-    ROS_INFO("VICON CALLBACK");
+    ROS_DEBUG("VICON CALLBACK");
     // conver pose to matrix
     Eigen::Matrix4d pose;
     Eigen::Quaterniond q(msg->transform.rotation.w, msg->transform.rotation.x, msg->transform.rotation.y, msg->transform.rotation.z);
@@ -20,7 +21,7 @@ void Transform::vicon_callback(const geometry_msgs::TransformStampedConstPtr& ms
 }
 //Multiplication fixed
 void Transform::drone_callback(const geometry_msgs::PoseStamped::ConstPtr& msg){
-    ROS_INFO("DRONE CALLBACK");\
+    ROS_DEBUG("DRONE CALLBACK");
     // conver pose to matrix
     Eigen::Matrix4d pose;
     Eigen::Quaterniond q(msg->pose.orientation.w, msg->pose.orientation.x, msg->pose.orientation.y, msg->pose.orientation.z);
