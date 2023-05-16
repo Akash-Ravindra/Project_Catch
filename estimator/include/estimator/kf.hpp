@@ -114,7 +114,7 @@ public:
 
 namespace cvKF {
 class KF {
-  cv::KalmanFilter *kf_;
+  cv::KalmanFilter kf_;
   cv::Mat_<double> u_;
   std::vector<Eigen::Vector3d> history_;
   std::vector<double> dt_;

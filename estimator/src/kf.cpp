@@ -92,26 +92,24 @@ void linearKF::KF::predict(const double &dt) {
 }
 
 cvKF::KF::KF() {
-  this->kf_ = new cv::KalmanFilter(6, 3, 0);
-  this->kf_->measurementNoiseCov = cv::Mat::eye(3, 3, CV_64F) * 0.005;
-  this->kf_->errorCovPre =
-      (cv::Mat_<double>(6, 6) << 0.01, 0, 0, 0.001, 0, 0, 0, 0.01, 0, 0, 0.001,
-       0, 0, 0, 0.01, 0, 0, 0.001, 0.001, 0, 0, 500, 0, 0, 0, 0.001, 0, 0, 500,
-       0, 0, 0, 0.001, 0, 0, 500);
-  this->kf_->measurementMatrix = (cv::Mat_<double>(3, 6) << 1, 0, 0, 0, 0, 0, 0,
-                                  1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0);
+  this->kf_.init(6, 3, 3, CV_64F);
+  cv::eigen2cv(defaultP, this->kf_.errorCovPost);
+  cv::eigen2cv(defaultR, this->kf_.measurementNoiseCov);
+  cv::eigen2cv(defaultH, this->kf_.measurementMatrix);
+  this->kf_.statePost = (cv::Mat_<double>(6, 1) << 0, 0, 0, 0, 0, 0);
+
   this->u_ = cv::Mat_<double>(3, 1) << 0, 0, -9.81;
 }
-cvKF::KF::~KF() { delete this->kf_; }
+cvKF::KF::~KF() {}
 
 void cvKF::KF::updatedt_(const double &dt) {
   this->dt_.push_back(dt);
   if (this->dt_.size() > 10) {
     this->dt_.erase(this->dt_.begin());
   }
-  cv::eigen2cv(linearKF::KF::get_A_(dt), this->kf_->transitionMatrix);
-  cv::eigen2cv(linearKF::KF::get_B_(dt), this->kf_->controlMatrix);
-  cv::eigen2cv(linearKF::KF::get_Q_(dt), this->kf_->processNoiseCov);
+  cv::eigen2cv(linearKF::KF::get_A_(dt), this->kf_.transitionMatrix);
+  cv::eigen2cv(linearKF::KF::get_B_(dt), this->kf_.controlMatrix);
+  cv::eigen2cv(linearKF::KF::get_Q_(dt), this->kf_.processNoiseCov);
 }
 
 void cvKF::KF::step(const double &dt, const Eigen::Matrix<double, 3, 1> &z) {
@@ -119,7 +117,7 @@ void cvKF::KF::step(const double &dt, const Eigen::Matrix<double, 3, 1> &z) {
     // Initialize the history and use as seed for states
     this->history_.push_back(z);
     if (this->history_.size() == 2) {
-      this->kf_->statePre =
+      this->kf_.statePre =
           (cv::Mat_<double>(6, 1) << this->history_[1](0), this->history_[1](1),
            this->history_[1](2),
            (this->history_[1](0) - this->history_[0](0)) / dt,
@@ -128,32 +126,27 @@ void cvKF::KF::step(const double &dt, const Eigen::Matrix<double, 3, 1> &z) {
     }
     return;
   }
-  this->updatedt_(dt);
   // Predict
-  this->kf_->predict();
+  this->updatedt_(dt);
+  this->kf_.predict(this->u_);
   // Update
-  this->kf_->correct((cv::Mat_<double>(3, 1) << z(0), z(1), z(2)));
+  this->kf_.correct((cv::Mat_<double>(3, 1) << z(0), z(1), z(2)));
 }
 void cvKF::KF::step(const double &dt){
   
-  cv::eigen2cv(linearKF::KF::get_A_(dt), this->kf_->transitionMatrix);
-  cv::eigen2cv(linearKF::KF::get_B_(dt), this->kf_->controlMatrix);
-  cv::eigen2cv(linearKF::KF::get_Q_(dt), this->kf_->processNoiseCov);
+  cv::eigen2cv(linearKF::KF::get_A_(dt), this->kf_.transitionMatrix);
+  cv::eigen2cv(linearKF::KF::get_B_(dt), this->kf_.controlMatrix);
+  cv::eigen2cv(linearKF::KF::get_Q_(dt), this->kf_.processNoiseCov);
   // Predict
-  this->kf_->predict();
-  this->kf_->statePre.copyTo(this->kf_->statePost);
-  this->kf_->errorCovPre.copyTo(this->kf_->errorCovPost);
+  this->kf_.predict(this->u_);
+  this->kf_.statePre.copyTo(this->kf_.statePost);
+  this->kf_.errorCovPre.copyTo(this->kf_.errorCovPost);
 }
 
 void cvKF::KF::getStates(Eigen::Matrix<double, 6, 1> &x,
                  Eigen::Matrix<double, 6, 6> &P)const{
-  cv::Mat_<double> x_ = this->kf_->statePost;
-  cv::Mat_<double> P_ = this->kf_->errorCovPost;
-  x << x_(0), x_(1), x_(2), x_(3), x_(4), x_(5);
-  P << P_(0,0), P_(0,1), P_(0,2), P_(0,3), P_(0,4), P_(0,5),
-        P_(1,0), P_(1,1), P_(1,2), P_(1,3), P_(1,4), P_(1,5),
-        P_(2,0), P_(2,1), P_(2,2), P_(2,3), P_(2,4), P_(2,5),
-        P_(3,0), P_(3,1), P_(3,2), P_(3,3), P_(3,4), P_(3,5),
-        P_(4,0), P_(4,1), P_(4,2), P_(4,3), P_(4,4), P_(4,5),
-        P_(5,0), P_(5,1), P_(5,2), P_(5,3), P_(5,4), P_(5,5);
+  cv::Mat_<double> x_ = this->kf_.statePost;
+  cv::Mat_<double> P_ = this->kf_.errorCovPost;
+  cv::cv2eigen(x_, x);
+  cv::cv2eigen(P_, P);
                  }
