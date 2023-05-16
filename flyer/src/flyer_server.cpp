@@ -179,20 +179,6 @@ const bool Flyer::arm(bool arm)
 }
 const bool Flyer::disarm()
 {
-  mavros_msgs::PositionTarget pos_target;
-  pos_target.type_mask = mavros_msgs::PositionTarget::IGNORE_PX |
-                         mavros_msgs::PositionTarget::IGNORE_PY |
-                         mavros_msgs::PositionTarget::IGNORE_PZ |
-                         mavros_msgs::PositionTarget::IGNORE_AFX |
-                         mavros_msgs::PositionTarget::IGNORE_AFY |
-                         mavros_msgs::PositionTarget::IGNORE_AFZ |
-                         mavros_msgs::PositionTarget::IGNORE_YAW_RATE;
-  pos_target.yaw = 0.0;
-  pos_target.coordinate_frame = mavros_msgs::PositionTarget::FRAME_BODY_NED;
-  pos_target.velocity.x = 0.0;
-  pos_target.velocity.y = 0.0;
-  pos_target.velocity.z = 0.0;
-  this->setpoint_pub_.publish(pos_target);
   return this->arm(false);
 }
 
@@ -216,7 +202,7 @@ void Flyer::land()
   land_cmd.request.min_pitch = 0;
   land_cmd.request.yaw = 0;
   // Call the server
-  bool success = land_client_.call(land_cmd);
+  this->result_.success = land_client_.call(land_cmd);
   ros::Duration(0.5).sleep();
   this->disarm();
 }
