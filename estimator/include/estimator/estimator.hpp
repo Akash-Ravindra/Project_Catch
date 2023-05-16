@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include <vicon_bridge/Marker.h>
 #include <vicon_bridge/Markers.h>
+
 namespace et {
 class Estimator {
 private:
@@ -29,7 +30,7 @@ protected:
   ros::Timer action_timer_;
   ros::Timer flight_timer_;
 
-  linearKF::KF filter_;
+  cvKF::KF filter_;
   /// @brief Store the previous msgs
   std::vector<std::pair<geometry_msgs::Point, double>> msg_hist_;
   /// @brief Store the filtered history
@@ -75,7 +76,7 @@ protected:
     this->msg_hist_.clear();
     this->filtered_hist_.clear();
     this->flight_time_ = 0.0;
-    this->filter_ = linearKF::KF();
+    this->filter_ = cvKF::KF();
   }
   double startPredictionTime_;
   double startPredictionAltitude_;

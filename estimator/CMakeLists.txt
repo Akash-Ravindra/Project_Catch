@@ -126,8 +126,9 @@ include_directories(
 )
 
 find_package(Eigen3 REQUIRED)
-
-include_directories(${catkin_INCLUDE_DIRS})
+find_package(OpenCV 4.2  REQUIRED)
+include_directories(${catkin_INCLUDE_DIRS}
+                    ${OpenCV_INCLUDE_DIRS})
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}_kf
@@ -158,6 +159,7 @@ add_executable(${PROJECT_NAME}_node src/runner.cpp src/estimator.cpp)
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${PROJECT_NAME}_kf
+  ${OpenCV_LIBRARIES}
 )
 
 #############
