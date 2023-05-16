@@ -1,8 +1,46 @@
 <launch>
+
+
+    <param name="target_altitude" type="double" value="2.0"/>
+    <param name="start_prediction_time" type="double" value="0.1"/>
+    <param name="start_prediction_altitude" type="double" value="2500"/>
+    
+    
     <arg name="node_start_delay" default="5.0" />   
+    <arg name="offboard_output"     default="false"/>
+    <arg name="veh_name" default="VOXL1"/>
+
+    <!-- vim: set ft=xml noet : -->
+	<!-- example launch script for PX4 based FCU's -->
+
+	<arg name="fcu_url" default="udp://127.0.0.1:14540@:14540" />
+	<arg name="gcs_url" default="" />
+	<arg name="tgt_system" default="1" />
+	<arg name="tgt_component" default="1" />
+	<arg name="log_output" default="screen" />
+	<arg name="fcu_protocol" default="v2.0" />
+	<arg name="respawn_mavros" default="false" />
+
+	<include file="$(find mavros)/launch/node.launch">
+		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
+		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
+
+		<arg name="fcu_url" value="$(arg fcu_url)" />
+		<arg name="gcs_url" value="$(arg gcs_url)" />
+		<arg name="tgt_system" value="$(arg tgt_system)" />
+		<arg name="tgt_component" value="$(arg tgt_component)" />
+		<arg name="log_output" value="$(arg log_output)" />
+		<arg name="fcu_protocol" value="$(arg fcu_protocol)" />
+		<arg name="respawn_mavros" default="$(arg respawn_mavros)" />
+	</include>
+
+
+
+
     <include file="$(find reorient)/launch/reorient.launch" />
     <include file="$(find estimator)/launch/total_estimator.launch" />
     <include file="$(find flyer)/launch/flyer.launch" />
     <include file="$(find vicon_bridge)/launch/vicon.launch" />
-    <node pkg="catcher" type="catcher_node" name="catcher" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'"  />
+
+    <node if="$(arg offboard_output)" pkg="catcher" type="catcher_node" name="catcher" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'"  />
 </launch>

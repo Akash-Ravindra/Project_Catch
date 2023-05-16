@@ -2,11 +2,15 @@
 
 using namespace catcher;
 
-const double CatchingAltitude = 1.2;
+const double CatchingAltitude = 1.7;
 
 Catcher::Catcher(std::string name)
     : nh_{name}, name_{name}, trackerClient_{"estimator_node", true},
       flyerClient_{"flyer_node", true}, spinner_{0} {
+  // Set up the logger
+  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
+  ros::console::notifyLoggerLevelsChanged();
+  }
   ROS_INFO_NAMED(this->name_, "Catcher started");
   // Set up the tracker action client
   this->trackerState_.trackerClient = &this->trackerClient_;
@@ -36,12 +40,12 @@ Catcher::Catcher(std::string name)
                       this, true, false);
   this->catcherTimer_.stop();
   this->stateTimer_ = nh_.createTimer(
-      ros::Duration(5.0, 0.0), &Catcher::stateTimerCallback, this, true, false);
+      ros::Duration(10.0, 0.0), &Catcher::stateTimerCallback, this, true, false);
   this->stateTimer_.stop();
   // Start timer
-  this->tickTimer_.start();
+  // this->tickTimer_.start();
   // Start the async spinner
-  this->spinner_.stop();
+  this->spinner_.start();
 }
 void Catcher::catcherTimerCallback(const ros::TimerEvent &event) {
   this->catcherTimer_.stop();
@@ -49,6 +53,7 @@ void Catcher::catcherTimerCallback(const ros::TimerEvent &event) {
   this->state_ = LAND;
 }
 void Catcher::shutdown() {
+  this->state_ = ERROR;
   this->tickTimer_.stop();
   this->stateTimer_.stop();
   this->catcherTimer_.stop();
@@ -107,10 +112,16 @@ void Catcher::trackerFeedbackCallback(
           this->flyerState_.target = *in_range;
           this->flyerState_.targetSet = true;
           // Check if the point is in the catcher
+          // tf2::doTransform(this->flyerState_.target, this->flyerState_.target,
+          //                  this->worldToDrone_);
+          this->state_ = CATCHING;
+
           ROS_INFO_NAMED(this->name_, "Target: %f, %f, %f",
                          this->flyerState_.target.x, this->flyerState_.target.y,
                          this->flyerState_.target.z);
-          this->state_ = CATCHING;
+
+          // Explicitly call the tick function
+          this->tick();
         }
       }
     }
@@ -147,19 +158,24 @@ void Catcher::trackerFeedbackCallback(
 }
 void Catcher::tickTimerCallback(const ros::TimerEvent &event) {
   this->tickTimer_.stop();
-  if(!this->trackerState_.trackerClient->isServerConnected() || !this->flyerState_.flyerClient->isServerConnected())
-    {
-      ROS_INFO_NAMED(this->name_, "Reconnecting to action servers");
-      if(!this->trackerState_.trackerClient->waitForServer(ros::Duration(3.0,0.0)) || !this->flyerState_.flyerClient->waitForServer(ros::Duration(3.0,0.0)))
-        {
-          ROS_INFO_NAMED(this->name_, "Reconnection failed");
-          this->state_ = ERROR;
-        }
-      else
-        {
-          ROS_INFO_NAMED(this->name_, "Reconnection successful");
-        }
-    }
+  this->tick();
+  this->tickTimer_.start();
+}
+
+void Catcher::tick(){
+  // if(!this->trackerState_.trackerClient->isServerConnected() || !this->flyerState_.flyerClient->isServerConnected())
+  //   {
+  //     ROS_INFO_NAMED(this->name_, "Reconnecting to action servers");
+  //     if(!this->trackerState_.trackerClient->waitForServer(ros::Duration(3.0,0.0)) || !this->flyerState_.flyerClient->waitForServer(ros::Duration(3.0,0.0)))
+  //       {
+  //         ROS_INFO_NAMED(this->name_, "Reconnection failed");
+  //         this->state_ = ERROR;
+  //       }
+  //     else
+  //       {
+  //         ROS_INFO_NAMED(this->name_, "Reconnection successful");
+  //       }
+  //   }
   switch (this->state_) {
   case STOPPED: { // Blocking state
     ROS_INFO_ONCE_NAMED(this->name_, "STOPPED_STATE");
@@ -187,12 +203,13 @@ void Catcher::tickTimerCallback(const ros::TimerEvent &event) {
     ROS_INFO_ONCE_NAMED(this->name_, "GROUNDED_STATE");
     this->flyerState_.goal.cmdType = (int)FlyerCommand::TAKEOFF;
     this->flyerState_.goal.worldToDrone = this->worldToDrone_;
-    if (!this->flyerState_.active)
+    if (!this->flyerState_.active){
+      this->flyerState_.active = true;
       this->flyerState_.flyerClient->sendGoal(
           this->flyerState_.goal,
           boost::bind(&Catcher::flyerDoneCallback, this, _1, _2),
           boost::bind(&Catcher::flyerActiveCallback, this),
-          boost::bind(&Catcher::flyerFeedbackCallback, this, _1));
+          boost::bind(&Catcher::flyerFeedbackCallback, this, _1));}
   } break;
   case IDLE: { // Hovering in air waiting for ball
     ROS_INFO_ONCE_NAMED(this->name_, "IDLE_STATE");
@@ -256,5 +273,5 @@ void Catcher::tickTimerCallback(const ros::TimerEvent &event) {
     ROS_INFO_ONCE_NAMED(this->name_, "UNKNOWN_STATE");
     break;
   }
-  this->tickTimer_.start();
+
 }

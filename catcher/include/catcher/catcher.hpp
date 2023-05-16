@@ -80,6 +80,7 @@ namespace catcher{
         /// @brief 
         /// @param event 
         void tickTimerCallback(const ros::TimerEvent& event);
+        void tick();
         void shutdown();
     };
 }
