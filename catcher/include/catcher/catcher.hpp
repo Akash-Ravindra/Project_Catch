@@ -7,6 +7,7 @@
 #include <reorient/TransformDtoW.h>
 #include "../../../flyer/include/flyer/waypoint.hpp"
 #include <tf2_ros/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 
 namespace catcher{
@@ -27,7 +28,7 @@ namespace catcher{
         // Feedback callback check the state of the tracker
         void trackerFeedbackCallback(const estimator::ParabolicTrackerFeedbackConstPtr& feedback);
         // Done callback
-        void trackerDoneCallback(const actionlib::SimpleClientGoalState& state, const estimator::ParabolicTrackerResultConstPtr& result){};
+        void trackerDoneCallback(const actionlib::SimpleClientGoalState& state, const estimator::ParabolicTrackerResultConstPtr& result){this->trackerState_.active = false;};
 
         // Flyer action client
         actionlib::SimpleActionClient<flyer::FlyerCommandAction> flyerClient_;
@@ -36,6 +37,7 @@ namespace catcher{
             bool active = false;
             flyer::FlyerCommandGoal goal;
             geometry_msgs::Point target;
+            bool targetSet = false;
         }flyerState_;
         // Active callback
         void flyerActiveCallback(){this->flyerState_.active = true;}
@@ -47,9 +49,19 @@ namespace catcher{
         ros::ServiceClient transformClient_;
         // Tick Timer
         ros::Timer tickTimer_;
+        // Catcher timer
+        ros::Timer catcherTimer_;
+        /// @brief A timeout for catching state 
+        /// @param event 
+        void catcherTimerCallback(const ros::TimerEvent& event);
         // Current state
-        enum State {STOPPED, GROUNDED, IDLE, TRACKING, CATCHING, CAUGHT, ERROR};
+        enum State {STOPPED, GROUNDED, IDLE, TRACKING, CATCHING, CAUGHT, LAND, ERROR};
         State state_;
+        State nextState_ = LAND;
+        // State transition timer
+        ros::Timer stateTimer_;
+        /// @brief Delay the state transition
+        void stateTimerCallback(const ros::TimerEvent& event){this->state_ = this->nextState_;}
         // Node name
         std::string name_;
 
@@ -68,6 +80,7 @@ namespace catcher{
         /// @brief 
         /// @param event 
         void tickTimerCallback(const ros::TimerEvent& event);
+        void shutdown();
     };
 }
 
