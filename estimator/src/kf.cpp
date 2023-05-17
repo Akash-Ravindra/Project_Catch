@@ -30,7 +30,7 @@ KF::KF() : KF{defaultP, defaultR, defaultH} {};
 KF::KF(const double &gravity) : KF{defaultP, defaultR, defaultH, gravity} {};
 
 void KF::updatedt_(const double &dt) {
-  this->dt_.push_back(dt);
+  this->dt_.emplace_back(dt);
   if (this->dt_.size() > 10) {
     this->dt_.erase(this->dt_.begin());
   }
@@ -46,7 +46,7 @@ void KF::updateParams_() { this->updateParams_(this->dt_.back()); }
 void KF::step(const double &dt, const Matrix<double, 3, 1> &z) {
   if (this->history_.size() < 2) {
     // Initialize the history and use as seed for states
-    this->history_.push_back(z);
+    this->history_.emplace_back(z);
     if (this->history_.size() == 2) {
       this->x_ << this->history_[1],
           (this->history_[1] - this->history_[0]) / dt;

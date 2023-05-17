@@ -10,7 +10,7 @@ const double defaultFlightTimeout = 10.0;
 const double netXMin = -2000;
 const double netXMax = 2000; // NEED TO CHANGE BACK TO 2000
 const double netYMin = -3000;
-const double netYMax = 2500;
+const double netYMax = 2300; // Reduced to give more space near front
 const double netZMin = 350.0;
 const double netZMax = 4000.0;
 
@@ -28,11 +28,15 @@ Estimator::Estimator(std::string name)
       nh_.param("start_prediction_altitude", startPredictionAltitude);
   this->startPredictionTime_ =
       nh_.param("start_prediction_time", startPredictionTime);
+  this->predictionStepSize_ =
+      nh_.param("prediction_step", defaultPredictionTimestep);
   // Print the parameters
   ROS_INFO_NAMED(this->name_, "start_prediction_altitude: %f",
                  this->startPredictionAltitude_);
   ROS_INFO_NAMED(this->name_, "start_prediction_time: %f",
                  this->startPredictionTime_);
+  ROS_INFO_NAMED(this->name_, "prediction_step: %f",
+                this->predictionStepSize_);
 };
 
 Estimator::~Estimator(){
@@ -64,6 +68,10 @@ void Estimator::goalCallback() {
     this->action_timer_ =
         nh_.createTimer(ros::Duration(60.0, 0.0),
                         &Estimator::actiontimerCallback, this, true, false);
+    // Stop the flight timer if it is running
+    this->action_timer_.stop();
+    this->flight_timer_.stop();
+
     this->action_timer_.start();
     // Get the name of the object that we want to track
     this->objectName_ = goal.get()->objectName;
@@ -155,8 +163,8 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       // Elapsed time
       this->flight_time_ += dt;
       // save the msg and the timestamp
-      this->msg_hist_.push_back(std::pair<geometry_msgs::Point, double>(
-          cur.translation, markers.get()->header.stamp.toSec()));
+      this->msg_hist_.emplace_back(
+          cur.translation, markers.get()->header.stamp.toSec());
       // Step the kalman filter
       ROS_DEBUG_NAMED(this->name_,
                      "Found the marker '%s' at (%f, %f, %f) Stepping the "
@@ -167,17 +175,13 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
                               cur.translation.y, cur.translation.z)
                                  .finished());
       // Get the filtered states
-      Eigen::Matrix<double, 6, 1> state;
-      Eigen::Matrix<double, 6, 6> cov;
-      this->filter_.getStates(state, cov);
-      ROS_DEBUG_NAMED(this->name_, "Filtered state: (%f, %f, %f)", state(0),
-                     state(1), state(2));
+      this->filter_.getStates(this->temp_state_, this->temp_cov_);
+      ROS_DEBUG_NAMED(this->name_, "Filtered state: (%f, %f, %f)", this->temp_state_(0),
+                     this->temp_state_(1), this->temp_state_(2));
       // Store the filtered states
-      geometry_msgs::Point pred;
-      eigenToPoint(state, &pred);
-      this->filtered_hist_.push_back(pred);
+      eigenToPoint(this->temp_state_, &(this->feedback_.currentPosition));
+      this->filtered_hist_.emplace_back(this->feedback_.currentPosition);
 
-      this->feedback_.currentPosition = pred;
       this->feedback_.deltaAltitude =
           this->filtered_hist_.size() > 1
               ? (this->filtered_hist_.back().z -
@@ -191,12 +195,10 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       // After some time, we can start predicting the path of the ball and
       if (flight_time_ > this->startPredictionTime_ ||
           this->filtered_hist_.back().z > this->startPredictionAltitude_) {
-        std::vector<geometry_msgs::Point> prediction;
-        this->simulateFlight_(&prediction);
+        this->simulateFlight_(&(this->feedback_.predictedTrajectory));
         // publish feedback
-        this->feedback_.predictedTrajectory = prediction;
         this->feedback_.interceptTime =
-            prediction.size() * defaultPredictionTimestep;
+            this->feedback_.predictedTrajectory.size() * defaultPredictionTimestep;
       }
 
       // If the ball is on the ground NO CATCH CONDITION
@@ -223,19 +225,17 @@ void Estimator::simulateFlight_(std::vector<geometry_msgs::Point> *prediction) {
   ROS_DEBUG_NAMED(this->name_, "Simulating the flight of the ball");
   auto cpy_filter = this->filter_;
   auto cur = this->msg_hist_.back().first;
-  prediction->push_back(cur);
-  Eigen::Matrix<double, 6, 1> state;
-  Eigen::Matrix<double, 6, 6> cov;
+  prediction->emplace_back(cur);
   geometry_msgs::Point pred;
   // Simulate the flight of the ball for 1.5 seconds
   while (prediction->back().z > 0.5 &&
          prediction->size() <
              ros::Duration(2.0, 0).toSec() / defaultPredictionTimestep) {
     cpy_filter.step(defaultPredictionTimestep);
-    cpy_filter.getStates(state, cov);
-    eigenToPoint(state, &pred);
+    cpy_filter.getStates(this->temp_state_, this->temp_cov_);
+    eigenToPoint(this->temp_state_, &pred);
     // Add the prediction to the vector
-    prediction->push_back(pred);
+    prediction->emplace_back(pred);
     // Check if the simulated ball has reached the target catch altitude
     this->feedback_.targetPredictionIndex =
         this->feedback_.targetPredictionIndex == -1
