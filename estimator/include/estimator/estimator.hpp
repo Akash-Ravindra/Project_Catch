@@ -49,13 +49,13 @@ protected:
   /// @param interceptTime
   /// @param target
   /// @param intercept
-  void populateFeedback(const bool &isValid, const std::string name,
-                        const double &deltaAltitude,
-                        const double &interceptDelta,
-                        const double &interceptTime,
-                        const geometry_msgs::Point &currentPosition,
-                        const std::vector<geometry_msgs::Point> &predictedTrajectory,
-                        const int &targetPredictionIndex) {
+  void
+  populateFeedback(const bool &isValid, const std::string name,
+                   const double &deltaAltitude, const double &interceptDelta,
+                   const double &interceptTime,
+                   const geometry_msgs::Point &currentPosition,
+                   const std::vector<geometry_msgs::Point> &predictedTrajectory,
+                   const int &targetPredictionIndex) {
     this->feedback_.isValid = isValid;
     this->feedback_.objectName = name;
     this->feedback_.deltaAltitude = deltaAltitude;
@@ -66,17 +66,16 @@ protected:
     this->feedback_.targetPredictionIndex = targetPredictionIndex;
   }
   void clearFeedback() {
-    this->populateFeedback(false, "", 0.0, 0.0, 0.0,
-                           geometry_msgs::Point(),
+    this->populateFeedback(false, "", 0.0, 0.0, 0.0, geometry_msgs::Point(),
                            std::vector<geometry_msgs::Point>(), 0);
   }
   void simulateFlight_(std::vector<geometry_msgs::Point> *prediction);
-  void eigenToPoint(const Eigen::VectorXd &e, geometry_msgs::Point *p){
+  void eigenToPoint(const Eigen::VectorXd &e, geometry_msgs::Point *p) {
     p->x = e(0);
     p->y = e(1);
     p->z = e(2);
   }
-  void resetAccumulators_(){
+  void resetAccumulators_() {
     this->msg_hist_.clear();
     this->filtered_hist_.clear();
     this->flight_time_ = 0.0;
@@ -85,6 +84,7 @@ protected:
   double startPredictionTime_;
   double startPredictionAltitude_;
   double predictionStepSize_;
+
 public:
   /// @brief
   /// @param name

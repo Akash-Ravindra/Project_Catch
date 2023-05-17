@@ -74,19 +74,20 @@ void KF::update(const Matrix<double, 3, 1> &z) {
   // Calculate Kalman gain
   this->K_.noalias() =
       (this->P_hat_ * this->H_.transpose()) *
-      ((this->H_ * this->P_hat_ * this->H_.transpose())+ this->R_).inverse();
+      ((this->H_ * this->P_hat_ * this->H_.transpose()) + this->R_).inverse();
   // Update state estimate
-  this->x_.noalias() = this->x_hat_ + (this->K_ * (z - this->H_ * this->x_hat_));
+  this->x_.noalias() =
+      this->x_hat_ + (this->K_ * (z - this->H_ * this->x_hat_));
   // Update covariance estimate
-  this->P_.noalias() =
-      ((this->I_ - (this->K_ * this->H_)) * this->P_hat_ *
-          (this->I_ - (this->K_ * this->H_)).transpose()) +
-      (this->K_ * this->R_ * this->K_.transpose());
+  this->P_.noalias() = ((this->I_ - (this->K_ * this->H_)) * this->P_hat_ *
+                        (this->I_ - (this->K_ * this->H_)).transpose()) +
+                       (this->K_ * this->R_ * this->K_.transpose());
 };
 
 void KF::predict(const double &dt) {
   // Update state estimate
   this->x_hat_.noalias() = (this->A_ * this->x_) + (this->B_ * this->u_);
   // Update covariance estimate
-  this->P_hat_.noalias() = (this->A_ * this->P_ * this->A_.transpose()) + this->Q_;
+  this->P_hat_.noalias() =
+      (this->A_ * this->P_ * this->A_.transpose()) + this->Q_;
 }

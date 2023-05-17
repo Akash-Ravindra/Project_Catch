@@ -31,12 +31,11 @@ private:
   // Control input matrix
   Matrix<double, 6, 3> B_;
   // Identity matrix
-  Matrix<double, 6, 6> I_=Matrix<double, 6, 6>::Identity();
+  Matrix<double, 6, 6> I_ = Matrix<double, 6, 6>::Identity();
   // Accumulated mesurement
   std::vector<Vector3d> history_;
   // Average timestep
   std::vector<double> dt_;
-
 
   /// @brief Get the process noise covariance matrix
   /// @param dt
@@ -70,8 +69,8 @@ private:
   /// @param dt
   void updateParams_(const double &dt);
   void updateParams_();
-public:
 
+public:
   /// @brief The main constructor
   /// @param P
   /// @param R

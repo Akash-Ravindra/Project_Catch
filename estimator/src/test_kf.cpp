@@ -38,10 +38,11 @@ int main() {
     Eigen::Matrix<double, 6, 1> state;
     Eigen::Matrix<double, 6, 6> cov;
     kf.getStates(state, cov);
-    std::cout << "State: " << state.transpose() << "|" << point.transpose() << std::endl;
+    std::cout << "State: " << state.transpose() << "|" << point.transpose()
+              << std::endl;
     counter++;
     if (counter > 100) {
-    std::cout << "P" << std::endl << cov << std::endl;
+      std::cout << "P" << std::endl << cov << std::endl;
       break;
     }
   }
