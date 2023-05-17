@@ -1,14 +1,15 @@
 <launch>
 
 
-    <param name="target_altitude" type="double" value="2.0"/>
-    <param name="start_prediction_time" type="double" value="0.1"/>
-    <param name="start_prediction_altitude" type="double" value="2500"/>
+    <param name="target_altitude" type="double" value="1.2"/>
+	
+    <arg name="start_prediction_time" default="0.2"/>
+    <arg name="start_prediction_altitude" default="2500"/>
+    <arg name="prediction_step" default="0.01"/>
     
-    
-    <arg name="node_start_delay" default="5.0" />   
+    <arg name="node_start_delay" default="3.0" />   
     <arg name="mavros_run"          default="true"/>
-	<arg name="offboard_output"     default="true"/>
+	<arg name="offboard_output"     default="false"/>
 	<arg name="veh_name" default="VOXL1"/>
 
 
@@ -39,7 +40,11 @@
 
 
     <include file="$(find reorient)/launch/reorient.launch" />
-    <include file="$(find estimator)/launch/total_estimator.launch" />
+    <include file="$(find estimator)/launch/total_estimator.launch">
+		<arg name="start_prediction_time" value="$(arg start_prediction_time)"/>
+		<arg name="start_prediction_altitude" value="$(arg start_prediction_altitude)"/>
+		<arg name="prediction_step" value="$(arg prediction_step)"/>
+	</include>
     <include file="$(find flyer)/launch/flyer.launch" />
     <include file="$(find vicon_bridge)/launch/vicon.launch" />
 
