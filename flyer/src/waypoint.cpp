@@ -10,5 +10,5 @@ constexpr double Waypoints::maxZ = 4.0;   // meters
 constexpr double Waypoints::minX = -2.0;    // meters
 constexpr double Waypoints::minY = -2.0;    // meters
 constexpr double Waypoints::minZ = 0;        // meters
-constexpr double Waypoints::tolerance = 0.2; // meters
+constexpr double Waypoints::tolerance = 0.1; // meters
 constexpr double Waypoints::timeout = 6.0; // seconds
