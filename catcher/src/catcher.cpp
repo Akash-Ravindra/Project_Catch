@@ -2,7 +2,7 @@
 
 using namespace catcher;
 
-const double CatchingAltitude = 1.7;
+const double CatchingAltitude = 1.0;
 
 Catcher::Catcher(std::string name)
     : nh_{name}, name_{name}, trackerClient_{"estimator_node", true},
@@ -32,7 +32,7 @@ Catcher::Catcher(std::string name)
   this->trackerState_.goal.targetAltitude =
       nh_.param<double>("target_altitude", CatchingAltitude);
   // Start the tick timer
-  this->tickTimer_ = nh_.createTimer(ros::Rate(10), &Catcher::tickTimerCallback,
+  this->tickTimer_ = nh_.createTimer(ros::Rate(50), &Catcher::tickTimerCallback,
                                      this, false, false);
   this->state_ = STOPPED;
   this->catcherTimer_ =
@@ -43,9 +43,9 @@ Catcher::Catcher(std::string name)
       ros::Duration(10.0, 0.0), &Catcher::stateTimerCallback, this, true, false);
   this->stateTimer_.stop();
   // Start timer
-  // this->tickTimer_.start();
+  this->tickTimer_.start();
   // Start the async spinner
-  this->spinner_.start();
+  // this->spinner_.start();
 }
 void Catcher::catcherTimerCallback(const ros::TimerEvent &event) {
   this->catcherTimer_.stop();
@@ -63,10 +63,12 @@ void Catcher::shutdown() {
   this->flyerState_.active = false;
   this->spinner_.stop();
   ROS_INFO_NAMED(this->name_, "Catcher shutdown");
+  ros::shutdown();
 }
 void Catcher::flyerDoneCallback(
     const actionlib::SimpleClientGoalState &state,
     const flyer::FlyerCommandResultConstPtr &result) {
+  this->flyerState_.active = false;
   switch (this->state_) {
   case STOPPED:
     break;
@@ -89,7 +91,6 @@ void Catcher::flyerDoneCallback(
   default:
     break;
   }
-  this->flyerState_.active = false;
 }
 
 void Catcher::trackerFeedbackCallback(
@@ -97,7 +98,7 @@ void Catcher::trackerFeedbackCallback(
   switch (this->state_) {
   case IDLE: {
     this->state_ = TRACKING;
-  } /// NEEDS TO BE CHANGED BACK TO TRACKER
+  }
   break;
   case TRACKING: { // check the feedback for valid traj
     if (feedback->isValid) {
@@ -106,7 +107,7 @@ void Catcher::trackerFeedbackCallback(
             feedback->predictedTrajectory.begin() +
                 feedback->targetPredictionIndex,
             feedback->predictedTrajectory.end(),
-            [](geometry_msgs::Point p) { return p.z < 1.2 && p.z > 0.8; });
+            [this](geometry_msgs::Point p) { return p.z < this->trackerState_.goal.targetAltitude+0.2 && p.z > this->trackerState_.goal.targetAltitude-0.2; });
         if (in_range != feedback->predictedTrajectory.end()) {
           // validate the point
           this->flyerState_.target = *in_range;
@@ -128,21 +129,19 @@ void Catcher::trackerFeedbackCallback(
     break;
   case CATCHING: {
     this->stateTimer_.stop();
-    if (feedback->isValid) {
-      static int counter = 5;
-      if (!(feedback->targetPredictionIndex == -1)) {
-        auto target =
+    static int counter = 5;
+    if (feedback->isValid && feedback->targetPredictionIndex != -1) {
+      auto target =
             feedback->predictedTrajectory[feedback->targetPredictionIndex];
         auto difference = sqrt(pow((target.x - this->flyerState_.target.x), 2) +
                                pow((target.y - this->flyerState_.target.y), 2) +
                                pow((target.z - this->flyerState_.target.z), 2));
-        if (difference < 0.001 && counter-- < 0) { /// MAGIC NUMBER
+        if (difference < 0.01 && counter-- < 0) { /// MAGIC NUMBER
           this->state_ = CAUGHT;
         }
         if (!difference > 0.7) { ////MAGIC NUMBER
           this->flyerState_.target = target;
           this->flyerState_.targetSet = true;
-        }
       }
     }
   } break;
@@ -188,7 +187,7 @@ void Catcher::tick(){
       tf2_ros::TransformListener tfListener_(tfBuffer_);
       try {
         this->worldToDrone_ =
-            tfBuffer_.lookupTransform("mavrik_inertial", "vicon_world",
+            tfBuffer_.lookupTransform(request.request.droneFrame, "vicon_world",
                                       ros::Time::now(), ros::Duration(5.0));
       } catch (tf2::TransformException &ex) {
         ROS_ERROR("Could not get transform %s", ex.what());
@@ -214,7 +213,7 @@ void Catcher::tick(){
   case IDLE: { // Hovering in air waiting for ball
     ROS_INFO_ONCE_NAMED(this->name_, "IDLE_STATE");
     static double time = ros::Time::now().toSec();
-    if (ros::Time::now().toSec() - time > 2 && !this->trackerState_.active) {
+    if (ros::Time::now().toSec() - time > 2.0 && !this->trackerState_.active) {
       this->trackerState_.goal.startTracker = true;
       // Make sure the action server has no goals
       this->trackerState_.trackerClient->cancelAllGoals();
@@ -253,18 +252,20 @@ void Catcher::tick(){
   case CAUGHT:
     this->catcherTimer_.stop();
     this->stateTimer_.start();
-
     ROS_INFO_ONCE_NAMED(this->name_, "CAUGHT_STATE");
     break;
   case LAND:
     ROS_INFO_ONCE_NAMED(this->name_, "LAND_STATE");
-    this->flyerState_.goal.cmdType = (int)FlyerCommand::LAND;
-    this->flyerState_.goal.worldToDrone = this->worldToDrone_;
-    this->flyerState_.flyerClient->sendGoal(
-        this->flyerState_.goal,
-        boost::bind(&Catcher::flyerDoneCallback, this, _1, _2),
-        boost::bind(&Catcher::flyerActiveCallback, this),
-        boost::bind(&Catcher::flyerFeedbackCallback, this, _1));
+    if(!this->flyerState_.active){
+      this->flyerState_.active = true;
+      this->flyerState_.goal.cmdType = (int)FlyerCommand::LAND;
+      this->flyerState_.goal.worldToDrone = this->worldToDrone_;
+      this->flyerState_.flyerClient->sendGoal(
+          this->flyerState_.goal,
+          boost::bind(&Catcher::flyerDoneCallback, this, _1, _2),
+          boost::bind(&Catcher::flyerActiveCallback, this),
+          boost::bind(&Catcher::flyerFeedbackCallback, this, _1));
+    }
     break;
   case ERROR:
     ROS_INFO_ONCE_NAMED(this->name_, "ERROR_STATE");
