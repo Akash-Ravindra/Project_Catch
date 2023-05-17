@@ -124,10 +124,11 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
     auto it = std::find_if(
         mkrs.begin(), mkrs.end(),
         [name_to_find](const vicon_bridge::Marker &m) {
-          return (m.marker_name == name_to_find) &&
+          return (m.marker_name.find(name_to_find)!=std::string::npos) &&
                  (m.translation.x > netXMin && m.translation.x < netXMax) &&
                  (m.translation.y > netYMin && m.translation.y < netYMax) &&
-                 (m.translation.z > netZMin && m.translation.z < netZMax);
+                 (m.translation.z > netZMin && m.translation.z < netZMax) &&
+                 (m.occluded == false);
         });
     // If we found the marker
     if (it != mkrs.end()) {
