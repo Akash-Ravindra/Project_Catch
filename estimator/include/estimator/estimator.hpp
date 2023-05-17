@@ -34,6 +34,11 @@ protected:
   std::vector<std::pair<geometry_msgs::Point, double>> msg_hist_;
   /// @brief Store the filtered history
   std::vector<geometry_msgs::Point> filtered_hist_;
+
+  /// @brief TEMP STATE AND COV
+  Eigen::Matrix<double, 6, 1> temp_state_;
+  Eigen::Matrix<double, 6, 6> temp_cov_;
+
   /// @brief Total flight time elapsed
   double flight_time_;
 
@@ -79,6 +84,7 @@ protected:
   }
   double startPredictionTime_;
   double startPredictionAltitude_;
+  double predictionStepSize_;
 public:
   /// @brief
   /// @param name

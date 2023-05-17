@@ -1,7 +1,12 @@
 <?xml version="1.0"?>
 <launch>
-    <param name="start_prediction_time" type="double" value="0.5"/>
-    <param name="start_prediction_altitude" type="double" value="2500"/>
-    
-    <node pkg="estimator" type="estimator_node" name="estimator_node" output="screen"/>
+    <arg name="start_prediction_time" default="0.5"/>
+    <arg name="start_prediction_altitude" default="2500"/>
+    <arg name="prediction_step" default="0.01"/>
+    <param name="start_prediction_time" type="double" value="$(arg start_prediction_time)"/>
+    <param name="start_prediction_altitude" type="double" value="$(arg start_prediction_altitude)"/>
+    <param name="prediction_step" type="double" value="$(arg prediction_step)"/>
+
+    <node pkg="estimator" type="estimator_node" name="estimator_node" output="screen">
+    </node>
 </launch>

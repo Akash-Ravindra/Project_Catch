@@ -37,17 +37,19 @@ private:
   // Average timestep
   std::vector<double> dt_;
 
+
+  /// @brief Get the process noise covariance matrix
+  /// @param dt
   Matrix<double, 6, 6> get_Q_(double dt) {
-    Matrix<double, 6, 6> Q;
     RowVector4d diff{0.25 * pow(dt, 4.0), 0, 0, 0.5 * pow(dt, 3.0)};
-    Q.row(0) << diff, 0, 0;
-    Q.row(1) << 0, diff, 0;
-    Q.row(2) << 0, 0, diff;
+    this->Q_.row(0) << diff, 0, 0;
+    this->Q_.row(1) << 0, diff, 0;
+    this->Q_.row(2) << 0, 0, diff;
     diff = RowVector4d{0.5 * pow(dt, 3.0), 0, 0, pow(dt, 2.0)};
-    Q.row(3) << diff, 0, 0;
-    Q.row(4) << 0, diff, 0;
-    Q.row(5) << 0, 0, diff;
-    return Q;
+    this->Q_.row(3) << diff, 0, 0;
+    this->Q_.row(4) << 0, diff, 0;
+    this->Q_.row(5) << 0, 0, diff;
+    return this->Q_;
   };
   Matrix<double, 6, 6> get_A_(const double &dt) {
     return (MatrixXd(6, 6) << 1, 0, 0, dt, 0, 0, 0, 1, 0, 0, dt, 0, 0, 0, 1, 0,
