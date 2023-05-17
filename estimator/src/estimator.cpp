@@ -124,7 +124,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
     auto it = std::find_if(
         mkrs.begin(), mkrs.end(),
         [name_to_find](const vicon_bridge::Marker &m) {
-          return (m.marker_name.find(name_to_find)!=std::string::npos) &&
+          return (name_to_find.empty()?m.marker_name.empty():m.marker_name.find(name_to_find)!=std::string::npos) &&
                  (m.translation.x > netXMin && m.translation.x < netXMax) &&
                  (m.translation.y > netYMin && m.translation.y < netYMax) &&
                  (m.translation.z > netZMin && m.translation.z < netZMax) &&
