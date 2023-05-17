@@ -35,8 +35,7 @@ Estimator::Estimator(std::string name)
                  this->startPredictionAltitude_);
   ROS_INFO_NAMED(this->name_, "start_prediction_time: %f",
                  this->startPredictionTime_);
-  ROS_INFO_NAMED(this->name_, "prediction_step: %f",
-                this->predictionStepSize_);
+  ROS_INFO_NAMED(this->name_, "prediction_step: %f", this->predictionStepSize_);
 };
 
 Estimator::~Estimator(){
@@ -124,7 +123,9 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
     auto it = std::find_if(
         mkrs.begin(), mkrs.end(),
         [name_to_find](const vicon_bridge::Marker &m) {
-          return (name_to_find.empty()?m.marker_name.empty():m.marker_name.find(name_to_find)!=std::string::npos) &&
+          return (name_to_find.empty() ? m.marker_name.empty()
+                                       : m.marker_name.find(name_to_find) !=
+                                             std::string::npos) &&
                  (m.translation.x > netXMin && m.translation.x < netXMax) &&
                  (m.translation.y > netYMin && m.translation.y < netYMax) &&
                  (m.translation.z > netZMin && m.translation.z < netZMax) &&
@@ -148,7 +149,7 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
                             &Estimator::flighttimerCallback, this, true, false);
         this->flight_timer_.start();
         ROS_DEBUG_NAMED(this->name_,
-                       "Found the marker and starting flight timer");
+                        "Found the marker and starting flight timer");
       }
 
       /////////////////////////////
@@ -164,21 +165,22 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
       // Elapsed time
       this->flight_time_ += dt;
       // save the msg and the timestamp
-      this->msg_hist_.emplace_back(
-          cur.translation, markers.get()->header.stamp.toSec());
+      this->msg_hist_.emplace_back(cur.translation,
+                                   markers.get()->header.stamp.toSec());
       // Step the kalman filter
       ROS_DEBUG_NAMED(this->name_,
-                     "Found the marker '%s' at (%f, %f, %f) Stepping the "
-                     "kalman filter with dt: %f",
-                     cur.marker_name.c_str(), cur.translation.x,
-                     cur.translation.y, cur.translation.z, dt);
+                      "Found the marker '%s' at (%f, %f, %f) Stepping the "
+                      "kalman filter with dt: %f",
+                      cur.marker_name.c_str(), cur.translation.x,
+                      cur.translation.y, cur.translation.z, dt);
       this->filter_.step(dt, (Eigen::VectorXd(3) << cur.translation.x,
                               cur.translation.y, cur.translation.z)
                                  .finished());
       // Get the filtered states
       this->filter_.getStates(this->temp_state_, this->temp_cov_);
-      ROS_DEBUG_NAMED(this->name_, "Filtered state: (%f, %f, %f)", this->temp_state_(0),
-                     this->temp_state_(1), this->temp_state_(2));
+      ROS_DEBUG_NAMED(this->name_, "Filtered state: (%f, %f, %f)",
+                      this->temp_state_(0), this->temp_state_(1),
+                      this->temp_state_(2));
       // Store the filtered states
       eigenToPoint(this->temp_state_, &(this->feedback_.currentPosition));
       this->filtered_hist_.emplace_back(this->feedback_.currentPosition);
@@ -199,7 +201,8 @@ void Estimator::markersCallback(const vicon_bridge::MarkersConstPtr &markers) {
         this->simulateFlight_(&(this->feedback_.predictedTrajectory));
         // publish feedback
         this->feedback_.interceptTime =
-            this->feedback_.predictedTrajectory.size() * defaultPredictionTimestep;
+            this->feedback_.predictedTrajectory.size() *
+            defaultPredictionTimestep;
       }
 
       // If the ball is on the ground NO CATCH CONDITION
