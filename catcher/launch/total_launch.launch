@@ -1,11 +1,15 @@
 <launch>
 
 
-    <param name="target_altitude" type="double" value="1.2"/>
-	
-    <arg name="start_prediction_time" default="0.2"/>
-    <arg name="start_prediction_altitude" default="2500"/>
-    <arg name="prediction_step" default="0.01"/>
+    <param name="target_altitude" type="double" value="2.3"/>
+	<param name="catch_altitude" type="double"	value="0.8"/>
+	<param name="catch_travel_time" type="double"	value="0.2"/>
+
+
+	<param name="object_name" type="string" value="catcher"/>
+    <arg name="start_prediction_time" default="2"/>
+    <arg name="start_prediction_altitude" default="2.8"/>
+    <arg name="prediction_step" default="0.00666666667"/>
     
     <arg name="node_start_delay" default="3.0" />   
     <arg name="mavros_run"          default="true"/>

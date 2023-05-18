@@ -3,14 +3,25 @@
 using namespace catcher;
 
 const double CatchingAltitude = 1.0;
+const double defaultCatchHeight = 0.7;
+const std::string ObjectName = "";
+constexpr double maxX = 2.0;  // meters
+constexpr double maxY = 2.0;   // meters
+constexpr double minX = -2.0;    // meters
+constexpr double minY = -2.0;    // meters
+const double defaultCatchTravelTime = 0.5; // seconds
 
 Catcher::Catcher(std::string name)
     : nh_{name}, name_{name}, trackerClient_{"estimator_node", true},
       flyerClient_{"flyer_node", true}, spinner_{0} {
   // Set up the logger
-  if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info) ) {
-  ros::console::notifyLoggerLevelsChanged();
+  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME,
+                                     ros::console::levels::Info)) {
+    ros::console::notifyLoggerLevelsChanged();
   }
+  // Start the async spinner
+  this->spinner_.start();
+
   ROS_INFO_NAMED(this->name_, "Catcher started");
   // Set up the tracker action client
   this->trackerState_.trackerClient = &this->trackerClient_;
@@ -29,23 +40,30 @@ Catcher::Catcher(std::string name)
       nh_.serviceClient<reorient::TransformDtoW>("/transform_service");
   this->transformClient_.waitForExistence();
   ROS_INFO_NAMED(this->name_, "Transform service ready");
+
   this->trackerState_.goal.targetAltitude =
       nh_.param<double>("target_altitude", CatchingAltitude);
+  this->catchHeight_ =
+      nh_.param<double>("catch_height", defaultCatchHeight);
+  this->catchTravelDelay =
+      nh_.param<double>("catch_travel_timer", defaultCatchTravelTime) /  nh_.param<double>("prediction_step", 0.001);
+
+  this->trackerState_.goal.objectName =
+      nh_.param<std::string>("object_name", ObjectName);
   // Start the tick timer
-  this->tickTimer_ = nh_.createTimer(ros::Rate(50), &Catcher::tickTimerCallback,
+  this->tickTimer_ = nh_.createTimer(ros::Rate(100), &Catcher::tickTimerCallback,
                                      this, false, false);
   this->state_ = STOPPED;
   this->catcherTimer_ =
       nh_.createTimer(ros::Duration(5.0, 0.0), &Catcher::catcherTimerCallback,
                       this, true, false);
   this->catcherTimer_.stop();
-  this->stateTimer_ = nh_.createTimer(
-      ros::Duration(10.0, 0.0), &Catcher::stateTimerCallback, this, true, false);
+  this->stateTimer_ =
+      nh_.createTimer(ros::Duration(8.0, 0.0), &Catcher::stateTimerCallback,
+                      this, true, false);
   this->stateTimer_.stop();
   // Start timer
   this->tickTimer_.start();
-  // Start the async spinner
-  // this->spinner_.start();
 }
 void Catcher::catcherTimerCallback(const ros::TimerEvent &event) {
   this->catcherTimer_.stop();
@@ -72,12 +90,16 @@ void Catcher::flyerDoneCallback(
   switch (this->state_) {
   case STOPPED:
     break;
-  case GROUNDED:
+  case GROUNDED: {
+    std::lock_guard<std::mutex> lock(this->stateMutex_);
     this->state_ = result->success ? IDLE : ERROR;
-    break;
-  case LAND:
+  } break;
+  case LAND: {
+    std::lock_guard<std::mutex> lock(this->stateMutex_);
+    std::lock_guard<std::mutex> lock2(this->flyerState_.flyerMutex_);
+    std::lock_guard<std::mutex> lock3(this->trackerState_.trackerMutex_);
     this->shutdown();
-    break;
+  } break;
   case IDLE:
     break;
   case TRACKING:
@@ -97,32 +119,35 @@ void Catcher::trackerFeedbackCallback(
     const estimator::ParabolicTrackerFeedbackConstPtr &feedback) {
   switch (this->state_) {
   case IDLE: {
+    std::lock_guard<std::mutex> lock(this->stateMutex_);
     this->state_ = TRACKING;
-  }
-  break;
+  } break;
   case TRACKING: { // check the feedback for valid traj
-    if (feedback->isValid) {
-      if (!(feedback->targetPredictionIndex == -1)) {
-        auto in_range = std::find_if(
-            feedback->predictedTrajectory.begin() +
-                feedback->targetPredictionIndex,
-            feedback->predictedTrajectory.end(),
-            [this](geometry_msgs::Point p) { return p.z < this->trackerState_.goal.targetAltitude+0.2 && p.z > this->trackerState_.goal.targetAltitude-0.2; });
-        if (in_range != feedback->predictedTrajectory.end()) {
-          // validate the point
+    if (feedback->isValid && feedback->targetPredictionIndex != -1) {
+      auto in_range = std::find_if(
+          feedback->predictedTrajectory.begin() +
+              ((feedback->targetPredictionIndex + catchTravelDelay > feedback->predictedTrajectory.size()-1)
+                   ? feedback->targetPredictionIndex 
+                   : feedback->targetPredictionIndex + catchTravelDelay),
+          feedback->predictedTrajectory.end(), [this](geometry_msgs::Point p) {
+            return p.z < this->catchHeight_ + 0.2 &&
+                   p.z > this->catchHeight_ - 0.2;
+          });
+      // Check if the point is in the net area
+      if (in_range->x < maxX && in_range->x > minX &&
+          in_range->y < maxY && in_range->y > minY) {
+        // Set the target
+        {
+          std::lock_guard<std::mutex> lock(this->flyerState_.flyerMutex_);
           this->flyerState_.target = *in_range;
           this->flyerState_.targetSet = true;
-          // Check if the point is in the catcher
-          // tf2::doTransform(this->flyerState_.target, this->flyerState_.target,
-          //                  this->worldToDrone_);
+        }
+        ROS_INFO_NAMED(this->name_, "Target: %f, %f, %f",
+                       this->flyerState_.target.x, this->flyerState_.target.y,
+                       this->flyerState_.target.z);
+        {
+          std::lock_guard<std::mutex> lock(this->stateMutex_);
           this->state_ = CATCHING;
-
-          ROS_INFO_NAMED(this->name_, "Target: %f, %f, %f",
-                         this->flyerState_.target.x, this->flyerState_.target.y,
-                         this->flyerState_.target.z);
-
-          // Explicitly call the tick function
-          this->tick();
         }
       }
     }
@@ -130,18 +155,33 @@ void Catcher::trackerFeedbackCallback(
   case CATCHING: {
     this->stateTimer_.stop();
     static int counter = 5;
-    if (feedback->isValid && feedback->targetPredictionIndex != -1) {
-      auto target =
-            feedback->predictedTrajectory[feedback->targetPredictionIndex];
-        auto difference = sqrt(pow((target.x - this->flyerState_.target.x), 2) +
-                               pow((target.y - this->flyerState_.target.y), 2) +
-                               pow((target.z - this->flyerState_.target.z), 2));
+    if (feedback->isValid) {
+      auto in_range = std::find_if(
+          feedback->predictedTrajectory.begin() +
+              ((feedback->targetPredictionIndex + catchTravelDelay > feedback->predictedTrajectory.size()-1)
+                   ? feedback->targetPredictionIndex 
+                   : feedback->targetPredictionIndex + catchTravelDelay),
+          feedback->predictedTrajectory.end(), [this](geometry_msgs::Point p) {
+            return p.z < this->catchHeight_ + 0.2 &&
+                   p.z > this->catchHeight_ - 0.2;
+          });
+      if (in_range != feedback->predictedTrajectory.end() &&
+          in_range->x < maxX && in_range->x > minX &&
+          in_range->y < maxY && in_range->y > minY) {
+        // validate the point
+        std::lock_guard<std::mutex> lock2(this->flyerState_.flyerMutex_);
+        auto difference =
+            sqrt(pow((in_range->x - this->flyerState_.target.x), 2) +
+                 pow((in_range->y - this->flyerState_.target.y), 2));
         if (difference < 0.01 && counter-- < 0) { /// MAGIC NUMBER
+          std::lock_guard<std::mutex> lock(this->stateMutex_);
           this->state_ = CAUGHT;
         }
         if (!difference > 0.7) { ////MAGIC NUMBER
-          this->flyerState_.target = target;
+          std::lock_guard<std::mutex> lock(this->flyerState_.flyerMutex_);
+          this->flyerState_.target = *in_range;
           this->flyerState_.targetSet = true;
+        }
       }
     }
   } break;
@@ -161,20 +201,8 @@ void Catcher::tickTimerCallback(const ros::TimerEvent &event) {
   this->tickTimer_.start();
 }
 
-void Catcher::tick(){
-  // if(!this->trackerState_.trackerClient->isServerConnected() || !this->flyerState_.flyerClient->isServerConnected())
-  //   {
-  //     ROS_INFO_NAMED(this->name_, "Reconnecting to action servers");
-  //     if(!this->trackerState_.trackerClient->waitForServer(ros::Duration(3.0,0.0)) || !this->flyerState_.flyerClient->waitForServer(ros::Duration(3.0,0.0)))
-  //       {
-  //         ROS_INFO_NAMED(this->name_, "Reconnection failed");
-  //         this->state_ = ERROR;
-  //       }
-  //     else
-  //       {
-  //         ROS_INFO_NAMED(this->name_, "Reconnection successful");
-  //       }
-  //   }
+void Catcher::tick() {
+  std::lock_guard<std::mutex> lock(this->stateMutex_);
   switch (this->state_) {
   case STOPPED: { // Blocking state
     ROS_INFO_ONCE_NAMED(this->name_, "STOPPED_STATE");
@@ -200,31 +228,39 @@ void Catcher::tick(){
   } break;
   case GROUNDED: { // Take off and hover
     ROS_INFO_ONCE_NAMED(this->name_, "GROUNDED_STATE");
-    this->flyerState_.goal.cmdType = (int)FlyerCommand::TAKEOFF;
-    this->flyerState_.goal.worldToDrone = this->worldToDrone_;
-    if (!this->flyerState_.active){
-      this->flyerState_.active = true;
-      this->flyerState_.flyerClient->sendGoal(
-          this->flyerState_.goal,
-          boost::bind(&Catcher::flyerDoneCallback, this, _1, _2),
-          boost::bind(&Catcher::flyerActiveCallback, this),
-          boost::bind(&Catcher::flyerFeedbackCallback, this, _1));}
+    {
+      std::lock_guard<std::mutex> lock(this->flyerState_.flyerMutex_);
+      this->flyerState_.goal.cmdType = (int)FlyerCommand::TAKEOFF;
+      this->flyerState_.goal.worldToDrone = this->worldToDrone_;
+      if (!this->flyerState_.active) {
+        this->flyerState_.active = true;
+        this->flyerState_.flyerClient->sendGoal(
+            this->flyerState_.goal,
+            boost::bind(&Catcher::flyerDoneCallback, this, _1, _2),
+            boost::bind(&Catcher::flyerActiveCallback, this),
+            boost::bind(&Catcher::flyerFeedbackCallback, this, _1));
+      }
+    }
   } break;
   case IDLE: { // Hovering in air waiting for ball
     ROS_INFO_ONCE_NAMED(this->name_, "IDLE_STATE");
     static double time = ros::Time::now().toSec();
-    if (ros::Time::now().toSec() - time > 2.0 && !this->trackerState_.active) {
-      this->trackerState_.goal.startTracker = true;
-      // Make sure the action server has no goals
-      this->trackerState_.trackerClient->cancelAllGoals();
-      ros::Duration(5.0).sleep();
-      // Send the goal to the action server
-      this->trackerState_.trackerClient->sendGoal(
-          this->trackerState_.goal,
-          boost::bind(&Catcher::trackerDoneCallback, this, _1, _2),
-          boost::bind(&Catcher::trackerActiveCallback, this),
-          boost::bind(&Catcher::trackerFeedbackCallback, this, _1));
-      this->trackerState_.active = true;
+    {
+      std::lock_guard<std::mutex> lock(this->trackerState_.trackerMutex_);
+      if (ros::Time::now().toSec() - time > 2.0 &&
+          !this->trackerState_.active) {
+        this->trackerState_.goal.startTracker = true;
+        // Make sure the action server has no goals
+        this->trackerState_.trackerClient->cancelAllGoals();
+        ros::Duration(3.0).sleep();
+        // Send the goal to the action server
+        this->trackerState_.trackerClient->sendGoal(
+            this->trackerState_.goal,
+            boost::bind(&Catcher::trackerDoneCallback, this, _1, _2),
+            boost::bind(&Catcher::trackerActiveCallback, this),
+            boost::bind(&Catcher::trackerFeedbackCallback, this, _1));
+        this->trackerState_.active = true;
+      }
     }
   } break;
   case TRACKING:
@@ -237,6 +273,7 @@ void Catcher::tick(){
     this->catcherTimer_.start();
     ROS_INFO_ONCE_NAMED(this->name_, "CATCHING_STATE");
     if (this->flyerState_.targetSet && !this->flyerState_.active) {
+      std::lock_guard<std::mutex> lock(this->flyerState_.flyerMutex_);
       this->flyerState_.targetSet = false;
       this->flyerState_.goal.cmdType = (int)FlyerCommand::MOVE;
       this->flyerState_.goal.worldToDrone = this->worldToDrone_;
@@ -256,7 +293,8 @@ void Catcher::tick(){
     break;
   case LAND:
     ROS_INFO_ONCE_NAMED(this->name_, "LAND_STATE");
-    if(!this->flyerState_.active){
+    if (!this->flyerState_.active) {
+      std::lock_guard<std::mutex> lock(this->flyerState_.flyerMutex_);
       this->flyerState_.active = true;
       this->flyerState_.goal.cmdType = (int)FlyerCommand::LAND;
       this->flyerState_.goal.worldToDrone = this->worldToDrone_;
@@ -269,10 +307,11 @@ void Catcher::tick(){
     break;
   case ERROR:
     ROS_INFO_ONCE_NAMED(this->name_, "ERROR_STATE");
+    ros::shutdown();
     break;
   default:
     ROS_INFO_ONCE_NAMED(this->name_, "UNKNOWN_STATE");
+    ros::shutdown();
     break;
   }
-
 }

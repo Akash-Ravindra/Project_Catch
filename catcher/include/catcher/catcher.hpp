@@ -8,7 +8,7 @@
 #include "../../../flyer/include/flyer/waypoint.hpp"
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
+#include <mutex>
 
 namespace catcher{
     class Catcher{
@@ -22,13 +22,18 @@ namespace catcher{
             actionlib::SimpleActionClient<estimator::ParabolicTrackerAction> *trackerClient;
             bool active = false;
             estimator::ParabolicTrackerGoal goal;
+            std::mutex trackerMutex_;
         }trackerState_;
+        /// @brief The height at which the drone should catch the flyer
+        double catchHeight_;
+        /// @brief The time taken by the drone to fly to the catch height
+        double catchTravelDelay;
         // Active callback
         void trackerActiveCallback(){this->trackerState_.active = true;}
         // Feedback callback check the state of the tracker
         void trackerFeedbackCallback(const estimator::ParabolicTrackerFeedbackConstPtr& feedback);
         // Done callback
-        void trackerDoneCallback(const actionlib::SimpleClientGoalState& state, const estimator::ParabolicTrackerResultConstPtr& result){this->trackerState_.active = false;};
+        void trackerDoneCallback(const actionlib::SimpleClientGoalState& state, const estimator::ParabolicTrackerResultConstPtr& result){std::lock_guard<std::mutex> lock(this->trackerState_.trackerMutex_);this->trackerState_.active = false;};
 
         // Flyer action client
         actionlib::SimpleActionClient<flyer::FlyerCommandAction> flyerClient_;
@@ -38,6 +43,7 @@ namespace catcher{
             flyer::FlyerCommandGoal goal;
             geometry_msgs::Point target;
             bool targetSet = false;
+            std::mutex flyerMutex_;
         }flyerState_;
         // Active callback
         void flyerActiveCallback(){this->flyerState_.active = true;}
@@ -57,11 +63,12 @@ namespace catcher{
         // Current state
         enum State {STOPPED, GROUNDED, IDLE, TRACKING, CATCHING, CAUGHT, LAND, ERROR};
         State state_;
+        std::mutex stateMutex_;
         State nextState_ = LAND;
         // State transition timer
         ros::Timer stateTimer_;
         /// @brief Delay the state transition
-        void stateTimerCallback(const ros::TimerEvent& event){this->state_ = this->nextState_;}
+        void stateTimerCallback(const ros::TimerEvent& event){std::lock_guard<std::mutex> lock(this->stateMutex_); this->state_ = this->nextState_;}
         // Node name
         std::string name_;
 
