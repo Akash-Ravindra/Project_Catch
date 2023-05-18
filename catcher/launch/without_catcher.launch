@@ -1,0 +1,8 @@
+<launch>
+    <arg name="node_start_delay" default="5.0" />   
+    <include file="$(find reorient)/launch/reorient.launch" />
+    <include file="$(find estimator)/launch/total_estimator.launch" />
+    <include file="$(find flyer)/launch/flyer.launch" />
+    <include file="$(find vicon_bridge)/launch/vicon.launch" />
+    <!-- <node pkg="catcher" type="catcher_node" name="catcher" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'"  /> -->
+</launch>

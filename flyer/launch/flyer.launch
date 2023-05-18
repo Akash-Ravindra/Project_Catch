@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="flyer" type="flyer_node" name="flyer_node" output="screen"/>
+</launch>

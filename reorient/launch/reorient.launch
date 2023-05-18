@@ -1,0 +1,4 @@
+<launch>
+  <node pkg="tf2_ros" type="static_transform_publisher" name="static_broadcaster_node" output="screen" args=" 0 0 0 0 0 0 1 world vicon_world"/>
+  <node pkg="reorient" type="reorient_srv" name="reorient_node" output="screen"/>
+</launch>

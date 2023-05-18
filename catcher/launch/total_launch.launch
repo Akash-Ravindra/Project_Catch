@@ -1,0 +1,56 @@
+<launch>
+
+
+    <param name="target_altitude" type="double" value="2.3"/>
+	<param name="catch_altitude" type="double"	value="0.8"/>
+	<param name="catch_travel_time" type="double"	value="0.2"/>
+
+
+	<param name="object_name" type="string" value="catcher"/>
+    <arg name="start_prediction_time" default="2"/>
+    <arg name="start_prediction_altitude" default="2.8"/>
+    <arg name="prediction_step" default="0.00666666667"/>
+    
+    <arg name="node_start_delay" default="3.0" />   
+    <arg name="mavros_run"          default="true"/>
+	<arg name="offboard_output"     default="false"/>
+	<arg name="veh_name" default="VOXL1"/>
+
+
+	<!-- vim: set ft=xml noet : -->
+	<!-- example launch script for PX4 based FCU's -->
+
+	<arg name="fcu_url" default="udp://127.0.0.1:14551@:14551" />
+	<arg name="gcs_url" default="" />
+	<arg name="tgt_system" default="1" />
+	<arg name="tgt_component" default="1" />
+	<arg name="log_output" default="screen" />
+	<arg name="fcu_protocol" default="v2.0" />
+	<arg name="respawn_mavros" default="false" />
+
+	<include file="$(find mavros)/launch/node.launch">
+		<arg name="pluginlists_yaml" value="$(find mavros)/launch/px4_pluginlists.yaml" />
+		<arg name="config_yaml" value="$(find mavros)/launch/px4_config.yaml" />
+
+		<arg name="fcu_url" value="$(arg fcu_url)" />
+		<arg name="gcs_url" value="$(arg gcs_url)" />
+		<arg name="tgt_system" value="$(arg tgt_system)" />
+		<arg name="tgt_component" value="$(arg tgt_component)" />
+		<arg name="log_output" value="$(arg log_output)" />
+		<arg name="fcu_protocol" value="$(arg fcu_protocol)" />
+		<arg name="respawn_mavros" default="$(arg respawn_mavros)" />
+	</include>
+
+
+
+    <include file="$(find reorient)/launch/reorient.launch" />
+    <include file="$(find estimator)/launch/total_estimator.launch">
+		<arg name="start_prediction_time" value="$(arg start_prediction_time)"/>
+		<arg name="start_prediction_altitude" value="$(arg start_prediction_altitude)"/>
+		<arg name="prediction_step" value="$(arg prediction_step)"/>
+	</include>
+    <include file="$(find flyer)/launch/flyer.launch" />
+    <include file="$(find vicon_bridge)/launch/vicon.launch" />
+
+    <node if="$(arg offboard_output)" pkg="catcher" type="catcher_node" name="catcher" output="screen" launch-prefix="bash -c 'sleep $(arg node_start_delay); $0 $@'"  />
+</launch>
