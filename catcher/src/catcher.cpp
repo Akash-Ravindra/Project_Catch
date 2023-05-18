@@ -5,10 +5,10 @@ using namespace catcher;
 const double CatchingAltitude = 1.0;
 const double defaultCatchHeight = 0.7;
 const std::string ObjectName = "";
-constexpr double maxX = 2.0;  // meters
-constexpr double maxY = 2.0;   // meters
-constexpr double minX = -2.0;    // meters
-constexpr double minY = -2.0;    // meters
+constexpr double maxX = 2.0;               // meters
+constexpr double maxY = 2.0;               // meters
+constexpr double minX = -2.0;              // meters
+constexpr double minY = -2.0;              // meters
 const double defaultCatchTravelTime = 0.5; // seconds
 
 Catcher::Catcher(std::string name)
@@ -43,24 +43,23 @@ Catcher::Catcher(std::string name)
 
   this->trackerState_.goal.targetAltitude =
       nh_.param<double>("target_altitude", CatchingAltitude);
-  this->catchHeight_ =
-      nh_.param<double>("catch_height", defaultCatchHeight);
+  this->catchHeight_ = nh_.param<double>("catch_height", defaultCatchHeight);
   this->catchTravelDelay =
-      nh_.param<double>("catch_travel_timer", defaultCatchTravelTime) /  nh_.param<double>("prediction_step", 0.001);
+      nh_.param<double>("catch_travel_timer", defaultCatchTravelTime) /
+      nh_.param<double>("prediction_step", 0.001);
 
   this->trackerState_.goal.objectName =
       nh_.param<std::string>("object_name", ObjectName);
   // Start the tick timer
-  this->tickTimer_ = nh_.createTimer(ros::Rate(100), &Catcher::tickTimerCallback,
-                                     this, false, false);
+  this->tickTimer_ = nh_.createTimer(
+      ros::Rate(100), &Catcher::tickTimerCallback, this, false, false);
   this->state_ = STOPPED;
   this->catcherTimer_ =
       nh_.createTimer(ros::Duration(5.0, 0.0), &Catcher::catcherTimerCallback,
                       this, true, false);
   this->catcherTimer_.stop();
-  this->stateTimer_ =
-      nh_.createTimer(ros::Duration(8.0, 0.0), &Catcher::stateTimerCallback,
-                      this, true, false);
+  this->stateTimer_ = nh_.createTimer(
+      ros::Duration(8.0, 0.0), &Catcher::stateTimerCallback, this, true, false);
   this->stateTimer_.stop();
   // Start timer
   this->tickTimer_.start();
@@ -126,16 +125,17 @@ void Catcher::trackerFeedbackCallback(
     if (feedback->isValid && feedback->targetPredictionIndex != -1) {
       auto in_range = std::find_if(
           feedback->predictedTrajectory.begin() +
-              ((feedback->targetPredictionIndex + catchTravelDelay > feedback->predictedTrajectory.size()-1)
-                   ? feedback->targetPredictionIndex 
+              ((feedback->targetPredictionIndex + catchTravelDelay >
+                feedback->predictedTrajectory.size() - 1)
+                   ? feedback->targetPredictionIndex
                    : feedback->targetPredictionIndex + catchTravelDelay),
           feedback->predictedTrajectory.end(), [this](geometry_msgs::Point p) {
             return p.z < this->catchHeight_ + 0.2 &&
                    p.z > this->catchHeight_ - 0.2;
           });
       // Check if the point is in the net area
-      if (in_range->x < maxX && in_range->x > minX &&
-          in_range->y < maxY && in_range->y > minY) {
+      if (in_range->x < maxX && in_range->x > minX && in_range->y < maxY &&
+          in_range->y > minY) {
         // Set the target
         {
           std::lock_guard<std::mutex> lock(this->flyerState_.flyerMutex_);
@@ -158,16 +158,17 @@ void Catcher::trackerFeedbackCallback(
     if (feedback->isValid) {
       auto in_range = std::find_if(
           feedback->predictedTrajectory.begin() +
-              ((feedback->targetPredictionIndex + catchTravelDelay > feedback->predictedTrajectory.size()-1)
-                   ? feedback->targetPredictionIndex 
+              ((feedback->targetPredictionIndex + catchTravelDelay >
+                feedback->predictedTrajectory.size() - 1)
+                   ? feedback->targetPredictionIndex
                    : feedback->targetPredictionIndex + catchTravelDelay),
           feedback->predictedTrajectory.end(), [this](geometry_msgs::Point p) {
             return p.z < this->catchHeight_ + 0.2 &&
                    p.z > this->catchHeight_ - 0.2;
           });
       if (in_range != feedback->predictedTrajectory.end() &&
-          in_range->x < maxX && in_range->x > minX &&
-          in_range->y < maxY && in_range->y > minY) {
+          in_range->x < maxX && in_range->x > minX && in_range->y < maxY &&
+          in_range->y > minY) {
         // validate the point
         std::lock_guard<std::mutex> lock2(this->flyerState_.flyerMutex_);
         auto difference =
