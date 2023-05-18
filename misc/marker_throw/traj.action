@@ -1,0 +1,17 @@
+# Define the goal
+bool startTracker
+string objectName
+string viconTopic
+---
+# Define the result
+bool isSuccess
+geometry_msgs/Point[] trajectory
+---
+# Define feedback
+bool isValid
+string objectName
+float32 deltaAltitude
+geometry_msgs/Point currentPosition
+float32 interceptDelta
+float32 interceptTime
+geometry_msgs/Point[] predictedTrajectory
